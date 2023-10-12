@@ -1,8 +1,8 @@
 name: code-scanning
 on:
-    schedule:
-        # Run this workflow "At 20:00 UTC on Sunday and Saturday"
-        - cron: '43 14 * * *'
+  schedule:
+    # Run this workflow "At 20:00 UTC on Sunday and Saturday"
+    - cron: '53 14 * * *'
 jobs:
   code-scanning:
     if: ${{ github.repository == 'zhzhuang-zju/karmada' }}
@@ -41,4 +41,4 @@ jobs:
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v2
         with:
-            sarif_file: 'trivy-results.sarif'   
+          sarif_file: 'trivy-results.sarif'   
