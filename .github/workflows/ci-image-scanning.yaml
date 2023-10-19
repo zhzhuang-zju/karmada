@@ -1,6 +1,10 @@
 name: image-scanning
 on:
-  push: 
+  push:
+  pull_request:
+    paths-ignore:
+      - '**/*.md'
+      - '**/*.txt'
 jobs:
   use-trivy-to-scan-image:
     name: image-scanning
