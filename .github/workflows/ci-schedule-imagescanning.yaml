@@ -1,5 +1,6 @@
 name: image-scanning-on-schedule
 on:
+  push:
   schedule:
     # Run this workflow "At 20:00 UTC on Sunday"
     - cron: '0 20 * * 0'
@@ -7,7 +8,7 @@ on:
 jobs:
   use-trivy-to-scan-image1:
     name: release-1.5
-    if: ${{ github.repository == 'karmada-io/karmada' }}
+    if: ${{ github.repository == 'zhzhuang-zju/karmada' }}
     runs-on: ubuntu-22.04
     strategy:
       matrix:
@@ -58,7 +59,7 @@ jobs:
           sarif_file: 'trivy-results-${{ matrix.target }}-release-1.5.sarif' 
   use-trivy-to-scan-image2:
     name: release-1.6
-    if: ${{ github.repository == 'karmada-io/karmada' }}
+    if: ${{ github.repository == 'zhzhuang-zju/karmada' }}
     runs-on: ubuntu-22.04
     strategy:
       matrix:
@@ -110,7 +111,7 @@ jobs:
           sarif_file: 'trivy-results-${{ matrix.target }}-release-1.6.sarif'
   use-trivy-to-scan-image3:
     name: release-1.7
-    if: ${{ github.repository == 'karmada-io/karmada' }}
+    if: ${{ github.repository == 'zhzhuang-zju/karmada' }}
     runs-on: ubuntu-22.04
     strategy:
       matrix:
