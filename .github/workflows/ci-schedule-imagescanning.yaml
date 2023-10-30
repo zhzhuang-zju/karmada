@@ -24,14 +24,6 @@ jobs:
           go-version: 1.20.6
     
     steps:
-      - name: install trivy
-        run: |
-          export TRIVYVERSION=0.45.1
-          sudo apt-get install wget apt-transport-https gnupg lsb-release
-          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
-          echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee -a /etc/apt/sources.list.d/trivy.list
-          sudo apt-get update
-          sudo apt-get install trivy=$TRIVYVERSION
       - name: checkout code
         uses: actions/checkout@v3
         with:
@@ -48,6 +40,13 @@ jobs:
           export VERSION=${{ matrix.karmada-version }}
           export REGISTRY="docker.io/karmada"
           make images GOOS="linux" --directory=.
+      - name: install trivy
+        run: |
+          sudo apt-get install wget apt-transport-https gnupg lsb-release
+          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
+          echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee -a /etc/apt/sources.list.d/trivy.list
+          sudo apt-get update
+          sudo apt-get install trivy      
       - name: Run Trivy vulnerability scanner
         run: |
           imageIds=(`docker images -q`)
@@ -57,11 +56,24 @@ jobs:
             image=$(docker images|grep $id| sed 's/[ ][ ]*/,/g')
             IFS=","
             imageInfo=($image)
-            imageref="${imageInfo[0]}:${imageInfo[1]}"
-            trivy image --format table --ignore-unfixed --vuln-type os,library --severity  UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL --output trivy/trivy-$id.table $imageref
-            trivy image --format sarif --ignore-unfixed --vuln-type os,library --severity  UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL --output trivy/trivy-$id.sarif $imageref
+            if [[ ${imageInfo[0]} == *karmada-* ]]
+            then
+              imageref="${imageInfo[0]}:${imageInfo[1]}"
+              trivy image --format table --ignore-unfixed --vuln-type os,library --severity  UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL --output trivy/trivy-$id.table $imageref
+              trivy image --format sarif --ignore-unfixed --vuln-type os,library --severity  UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL --output trivy/trivy-$id.sarif $imageref
+            fi
           done
       - name: display
         run: |
-          ll trivy
           cat trivy/*.table
+      - name: merge sarif file
+        uses: microsoft/sarif-actions@v0.1
+        with:
+          command: 'merge trivy/*.sarif --output-file trivy-results.sarif'
+      - name: test
+        run: |
+          cat trivy-results.sarif
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'trivy-results.sarif'      
