@@ -24,6 +24,14 @@ jobs:
           go-version: 1.20.6
     
     steps:
+      - name: install trivy
+        run: |
+          export TRIVYVERSION=0.45.1
+          sudo apt-get install wget apt-transport-https gnupg lsb-release
+          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
+          echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee -a /etc/apt/sources.list.d/trivy.list
+          sudo apt-get update
+          sudo apt-get install trivy=$TRIVYVERSION
       - name: checkout code
         uses: actions/checkout@v3
         with:
@@ -40,18 +48,20 @@ jobs:
           export VERSION=${{ matrix.karmada-version }}
           export REGISTRY="docker.io/karmada"
           make images GOOS="linux" --directory=.
-      - name: download trivy
-        run: |
-          apt-get update
-          apt-get install trivy
       - name: Run Trivy vulnerability scanner
         run: |
           imageIds=(`docker images -q`)
+          mkdir trivy
           for id in ${imageIds[@]}
           do 
             image=$(docker images|grep $id| sed 's/[ ][ ]*/,/g')
             IFS=","
             imageInfo=($image)
             imageref="${imageInfo[0]}:${imageInfo[1]}"
-            trivy image --format table --ignore-unfixed --vuln-type os,library --severity  UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL $imageref
-          done 
+            trivy image --format table --ignore-unfixed --vuln-type os,library --severity  UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL --output trivy/trivy-$id.table $imageref
+            trivy image --format sarif --ignore-unfixed --vuln-type os,library --severity  UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL --output trivy/trivy-$id.sarif $imageref
+          done
+      - name: display
+        run: |
+          ll trivy
+          cat trivy/*.table
