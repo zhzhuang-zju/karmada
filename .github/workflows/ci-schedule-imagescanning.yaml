@@ -60,20 +60,10 @@ jobs:
             then
               imageref="${imageInfo[0]}:${imageInfo[1]}"
               trivy image --format table --ignore-unfixed --vuln-type os,library --severity  UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL --output trivy/trivy-$id.table $imageref
-              trivy image --format sarif --ignore-unfixed --vuln-type os,library --severity  UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL --output trivy/trivy-$id.sarif $imageref
             fi
           done
-      - name: display
+      - name: display scan results
         run: |
           cat trivy/*.table
-      - name: merge sarif file
-        uses: microsoft/sarif-actions@v0.1
-        with:
-          command: 'merge trivy/*.sarif --output-file trivy-results.sarif'
-      - name: test
-        run: |
-          cat trivy-results.sarif
-      - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v2
-        with:
-          sarif_file: 'trivy-results.sarif'      
+
+   
