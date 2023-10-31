@@ -1,0 +1,67 @@
+name: image-scanning-on-schedule
+on:
+  schedule:
+    # Run this workflow "At 20:00 UTC on Sunday"
+    - cron: '0 0 * * 0'
+
+jobs:
+  use-trivy-to-scan-image:
+    name: image scannning
+    # prevent job running from forked repository
+    if: ${{ github.repository == 'karmada-io/karmada' }}
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        karmada-version: [ release-1.5, release-1.6, release-1.7 ]
+        include:
+        - karmada-version: release-1.5
+          go-version: 1.19.5
+
+        - karmada-version: release-1.6
+          go-version: 1.20.5
+
+        - karmada-version: release-1.7
+          go-version: 1.20.6
+    
+    steps:
+      - name: checkout code
+        uses: actions/checkout@v3
+        with:
+          # Number of commits to fetch. 0 indicates all history for all branches and tags.
+          # We need to guess version via git tags.
+          fetch-depth: 0
+          ref: ${{ matrix.karmada-version }}
+      - name: install Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: ${{ matrix.go-version }}
+      - name: Build images from Dockerfile
+        run: |
+          export VERSION=${{ matrix.karmada-version }}
+          export REGISTRY="docker.io/karmada"
+          make images GOOS="linux" --directory=.
+      - name: install trivy
+        run: |
+          sudo apt-get install wget apt-transport-https gnupg lsb-release
+          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
+          echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee -a /etc/apt/sources.list.d/trivy.list
+          sudo apt-get update
+          sudo apt-get install trivy      
+      - name: Run Trivy vulnerability scanner
+        run: |
+          imageIds=(`docker images -q`)
+          mkdir trivy
+          for id in ${imageIds[@]}
+          do 
+            image=$(docker images|grep $id| sed 's/[ ][ ]*/,/g')
+            IFS=","
+            imageInfo=($image)
+            if [[ ${imageInfo[0]} == *karmada-* ]]
+            then
+              imageref="${imageInfo[0]}:${imageInfo[1]}"
+              trivy image --format table --ignore-unfixed --vuln-type os,library --severity  UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL --output trivy/trivy-$id.table $imageref
+            fi
+          done
+      - name: display scan results
+        run: |
+          cat trivy/*.table
