@@ -1,12 +1,20 @@
 package top
 
 import (
+	"context"
+	"fmt"
+
 	"github.com/spf13/cobra"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
+	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubectl/pkg/util/templates"
 	metricsapi "k8s.io/metrics/pkg/apis/metrics"
+	metricsclientset "k8s.io/metrics/pkg/client/clientset/versioned"
+
+	karmadaclientset "github.com/karmada-io/karmada/pkg/generated/clientset/versioned"
+	"github.com/karmada-io/karmada/pkg/karmadactl/util"
 )
 
 const (
@@ -27,7 +35,7 @@ var (
 		Metrics Server to be correctly configured and working on the member clusters.`)
 )
 
-func NewCmdTop(f cmdutil.Factory, parentCommand string, streams genericclioptions.IOStreams) *cobra.Command {
+func NewCmdTop(f util.Factory, parentCommand string, streams genericclioptions.IOStreams) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "top",
 		Short: "Display resource (CPU/memory) usage of member clusters",
@@ -37,6 +45,7 @@ func NewCmdTop(f cmdutil.Factory, parentCommand string, streams genericclioption
 
 	// create subcommands
 	cmd.AddCommand(NewCmdTopPod(f, parentCommand, nil, streams))
+	cmd.AddCommand(NewCmdTopNode(f, parentCommand, nil, streams))
 
 	return cmd
 }
@@ -55,4 +64,55 @@ func SupportedMetricsAPIVersionAvailable(discoveredAPIGroups *metav1.APIGroupLis
 		}
 	}
 	return false
+}
+
+func GenClusterList(clientSet karmadaclientset.Interface, clusters []string) ([]string, error) {
+	if len(clusters) != 0 {
+		return clusters, nil
+	}
+
+	clusterList, err := clientSet.ClusterV1alpha1().Clusters().List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list all member clusters in control plane, err: %w", err)
+	}
+
+	for i := range clusterList.Items {
+		clusters = append(clusters, clusterList.Items[i].Name)
+	}
+	return clusters, nil
+}
+
+func GetCoreV1ClientAndMetricsClient(f util.Factory,
+	cluster string, useProtocolBuffers bool) (v1.CoreV1Interface, metricsclientset.Interface, error) {
+	memberFactory, err := f.FactoryForMemberCluster(cluster)
+	if err != nil {
+		return nil, nil, err
+	}
+	clientset, err := memberFactory.KubernetesClientSet()
+	if err != nil {
+		return nil, nil, err
+	}
+	discoveryClient := clientset.DiscoveryClient
+	apiGroups, err := discoveryClient.ServerGroups()
+	if err != nil {
+		return nil, nil, err
+	}
+	metricsAPIAvailable := SupportedMetricsAPIVersionAvailable(apiGroups)
+	if !metricsAPIAvailable {
+		return nil, nil, fmt.Errorf("Metrics API not available")
+	}
+
+	config, err := memberFactory.ToRESTConfig()
+	if err != nil {
+		return nil, nil, err
+	}
+	if useProtocolBuffers {
+		config.ContentType = "application/vnd.kubernetes.protobuf"
+	}
+	metricsClient, err := metricsclientset.NewForConfig(config)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return clientset.CoreV1(), metricsClient, nil
 }
