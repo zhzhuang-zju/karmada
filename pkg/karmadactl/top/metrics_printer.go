@@ -12,6 +12,7 @@ import (
 	metricsapi "k8s.io/metrics/pkg/apis/metrics"
 
 	autoscalingv1alpha1 "github.com/karmada-io/karmada/pkg/apis/autoscaling/v1alpha1"
+	"github.com/karmada-io/karmada/pkg/apis/cluster/v1alpha1"
 )
 
 var (
@@ -21,6 +22,7 @@ var (
 	}
 	PodColumns      = []string{"NAME", "CLUSTER", "CPU(cores)", "MEMORY(bytes)"}
 	NodeColumns     = []string{"NAME", "CLUSTER", "CPU(cores)", "CPU%", "MEMORY(bytes)", "MEMORY%"}
+	ClusterColumns  = []string{"NAME", "NODE", "NODE%", "POD", "POD%", "CPU(cores)", "CPU%", "MEMORY(bytes)", "MEMORY%"}
 	NamespaceColumn = "NAMESPACE"
 	PodColumn       = "POD"
 )
@@ -250,4 +252,34 @@ func (adder *ResourceAdder) AddPodMetrics(m *metricsapi.PodMetrics) {
 			adder.total[res] = total
 		}
 	}
+}
+
+func (printer *TopCmdPrinter) PrintClusterMetrics(clusters []v1alpha1.Cluster, noHeaders bool, sortBy string) error {
+	if len(clusters) == 0 {
+		return nil
+	}
+	w := printers.GetNewTabWriter(printer.out)
+	defer w.Flush()
+
+	sort.Sort(NewClusterSorter(clusters, sortBy))
+
+	if !noHeaders {
+		printColumnNames(w, ClusterColumns)
+	}
+
+	for _, m := range clusters {
+		fraction := float64(m.Status.NodeSummary.ReadyNum) / float64(m.Status.NodeSummary.TotalNum) * 100
+		printValue(w, m.Name)
+		printValue(w, m.Status.NodeSummary.ReadyNum)
+		fmt.Fprintf(w, "%d%%\t", int64(fraction))
+		printValue(w, m.Status.ResourceSummary.Allocated.Pods().Value())
+		fraction1 := float64(m.Status.ResourceSummary.Allocated.Pods().Value()) / float64(m.Status.ResourceSummary.Allocatable.Pods().Value()) * 100
+		fmt.Fprintf(w, "%d%%\t", int64(fraction1))
+		printAllResourceUsages(w, &ResourceMetricsInfo{
+			Metrics:   m.Status.ResourceSummary.Allocated,
+			Available: m.Status.ResourceSummary.Allocatable,
+		})
+		fmt.Fprint(w, "\n")
+	}
+	return nil
 }

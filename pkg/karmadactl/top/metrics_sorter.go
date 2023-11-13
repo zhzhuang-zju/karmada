@@ -21,6 +21,7 @@ import (
 	metricsapi "k8s.io/metrics/pkg/apis/metrics"
 
 	autoscalingv1alpha1 "github.com/karmada-io/karmada/pkg/apis/autoscaling/v1alpha1"
+	"github.com/karmada-io/karmada/pkg/apis/cluster/v1alpha1"
 )
 
 type PodMetricsSorter struct {
@@ -100,5 +101,40 @@ func NewNodeMetricsSorter(metrics []metricsapi.NodeMetrics, sortBy string) *Node
 	return &NodeMetricsSorter{
 		metrics: metrics,
 		sortBy:  sortBy,
+	}
+}
+
+type ClusterSorter struct {
+	clusters []v1alpha1.Cluster
+	sortBy   string
+}
+
+func (c *ClusterSorter) Len() int {
+	return len(c.clusters)
+}
+
+func (c *ClusterSorter) Swap(i, j int) {
+	c.clusters[i], c.clusters[j] = c.clusters[j], c.clusters[i]
+}
+
+func (c *ClusterSorter) Less(i, j int) bool {
+	switch c.sortBy {
+	case "node":
+		return c.clusters[i].Status.NodeSummary.ReadyNum > c.clusters[j].Status.NodeSummary.ReadyNum
+	case "pod":
+		return c.clusters[i].Status.ResourceSummary.Allocated.Pods().Value() > c.clusters[j].Status.ResourceSummary.Allocated.Pods().Value()
+	case "cpu":
+		return c.clusters[i].Status.ResourceSummary.Allocated.Cpu().MilliValue() > c.clusters[j].Status.ResourceSummary.Allocated.Cpu().MilliValue()
+	case "memory":
+		return c.clusters[i].Status.ResourceSummary.Allocated.Memory().Value() > c.clusters[j].Status.ResourceSummary.Allocated.Memory().Value()
+	default:
+		return c.clusters[i].Name < c.clusters[j].Name
+	}
+}
+
+func NewClusterSorter(clusters []v1alpha1.Cluster, sortBy string) *ClusterSorter {
+	return &ClusterSorter{
+		clusters: clusters,
+		sortBy:   sortBy,
 	}
 }
