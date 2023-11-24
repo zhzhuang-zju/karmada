@@ -42,6 +42,7 @@ var (
 	karmadaSchedulerLabels           = labels.Set{"karmada-app": constants.KarmadaScheduler}
 	karmadaWebhookLabels             = labels.Set{"karmada-app": constants.KarmadaWebhook}
 	karmadaMetricAdapterLabels       = labels.Set{"karmada-app": constants.KarmadaMetricsAdapter}
+	karmadaSearchLabels              = labels.Set{"karmada-app": constants.KarmadaSearch}
 )
 
 // NewCheckApiserverHealthTask init wait-apiserver task
@@ -80,6 +81,7 @@ func NewWaitControlPlaneTask() workflow.Task {
 			newWaitControlPlaneSubTask("KarmadaControllerManager", karmadaControllerManagerLabels),
 			newWaitControlPlaneSubTask("KarmadaScheduler", karmadaSchedulerLabels),
 			newWaitControlPlaneSubTask("KarmadaWebhook", karmadaWebhookLabels),
+			newWaitControlPlaneSubTask("KarmadaSearch", karmadaSearchLabels),
 		},
 	}
 }

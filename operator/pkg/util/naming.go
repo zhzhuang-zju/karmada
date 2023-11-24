@@ -94,6 +94,11 @@ func KarmadaMetricsAdapterName(karmada string) string {
 	return generateResourceName(karmada, "metrics-adapter")
 }
 
+// KarmadaSearchName returns name of karmada-search
+func KarmadaSearchName(karmada string) string {
+	return generateResourceName(karmada, "search")
+}
+
 func generateResourceName(karmada, suffix string) string {
 	if strings.Contains(karmada, "karmada") {
 		return fmt.Sprintf("%s-%s", karmada, suffix)

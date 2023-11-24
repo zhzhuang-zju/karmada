@@ -49,6 +49,10 @@ spec:
       imageRepository: registry.k8s.io/kube-controller-manager
       imageTag: v1.25.4
       replicas: 1
+    karmadaSearch:
+      imageRepository: docker.io/karmada/karmada-search
+      imageTag: v1.7.0
+      replicas: 1
   hostCluster:
     networking:
       dnsDomain: cluster.local

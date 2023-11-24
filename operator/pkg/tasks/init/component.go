@@ -27,6 +27,7 @@ import (
 	"github.com/karmada-io/karmada/operator/pkg/constants"
 	"github.com/karmada-io/karmada/operator/pkg/controlplane"
 	"github.com/karmada-io/karmada/operator/pkg/controlplane/metricsadapter"
+	"github.com/karmada-io/karmada/operator/pkg/controlplane/search"
 	"github.com/karmada-io/karmada/operator/pkg/controlplane/webhook"
 	"github.com/karmada-io/karmada/operator/pkg/karmadaresource/apiservice"
 	"github.com/karmada-io/karmada/operator/pkg/util/apiclient"
@@ -44,8 +45,12 @@ func NewComponentTask() workflow.Task {
 			newComponentSubTask(constants.KarmadaControllerManagerComponent),
 			newComponentSubTask(constants.KarmadaSchedulerComponent),
 			{
-				Name: "KarmadaWebhook",
+				Name: constants.KarmadaWebhookComponent,
 				Run:  runKarmadaWebhook,
+			},
+			{
+				Name: constants.KarmadaSearchComponent,
+				Run:  runKarmadaSearch,
 			},
 			newComponentSubTask(constants.KarmadaDeschedulerComponent),
 			newKarmadaMetricsAdapterSubTask(),
@@ -117,6 +122,32 @@ func runKarmadaWebhook(r workflow.RunData) error {
 	}
 
 	klog.V(2).InfoS("[KarmadaWebhook] Successfully applied karmada webhook component", "karmada", klog.KObj(data))
+	return nil
+}
+
+func runKarmadaSearch(r workflow.RunData) error {
+	data, ok := r.(InitData)
+	if !ok {
+		return errors.New("KarmadaSearch task invoked with an invalid data struct")
+	}
+
+	cfg := data.Components()
+	if cfg.KarmadaSearch == nil {
+		return errors.New("skip install karmada search")
+	}
+
+	err := search.EnsureKarmadaSearch(
+		data.RemoteClient(),
+		cfg.KarmadaSearch,
+		data.GetName(),
+		data.GetNamespace(),
+		data.FeatureGates(),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to apply karmada search, err: %w", err)
+	}
+
+	klog.V(2).InfoS("[KarmadaSearch] Successfully applied karmada search component", "karmada", klog.KObj(data))
 	return nil
 }
 
