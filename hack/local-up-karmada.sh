@@ -128,10 +128,6 @@ util::create_cluster "${MEMBER_CLUSTER_1_NAME}" "${MEMBER_CLUSTER_1_TMP_CONFIG}"
 util::create_cluster "${MEMBER_CLUSTER_2_NAME}" "${MEMBER_CLUSTER_2_TMP_CONFIG}" "${CLUSTER_VERSION}" "${KIND_LOG_FILE}" "${TEMP_PATH}"/member2.yaml
 util::create_cluster "${PULL_MODE_CLUSTER_NAME}" "${PULL_MODE_CLUSTER_TMP_CONFIG}" "${CLUSTER_VERSION}" "${KIND_LOG_FILE}"
 
-#step2. make images and get karmadactl
-export VERSION="latest"
-export REGISTRY="docker.io/karmada"
-make images GOOS="linux" --directory="${REPO_ROOT}"
 
 GO111MODULE=on go install "github.com/karmada-io/karmada/cmd/karmadactl"
 GOPATH=$(go env GOPATH | awk -F ':' '{print $1}')
@@ -141,22 +137,15 @@ KARMADACTL_BIN="${GOPATH}/bin/karmadactl"
 echo "Waiting for the host clusters to be ready..."
 util::check_clusters_ready "${MAIN_KUBECONFIG}" "${HOST_CLUSTER_NAME}"
 
-#step4. load components images to kind cluster
-kind load docker-image "${REGISTRY}/karmada-controller-manager:${VERSION}" --name="${HOST_CLUSTER_NAME}"
-kind load docker-image "${REGISTRY}/karmada-scheduler:${VERSION}" --name="${HOST_CLUSTER_NAME}"
-kind load docker-image "${REGISTRY}/karmada-descheduler:${VERSION}" --name="${HOST_CLUSTER_NAME}"
-kind load docker-image "${REGISTRY}/karmada-webhook:${VERSION}" --name="${HOST_CLUSTER_NAME}"
-kind load docker-image "${REGISTRY}/karmada-scheduler-estimator:${VERSION}" --name="${HOST_CLUSTER_NAME}"
-kind load docker-image "${REGISTRY}/karmada-aggregated-apiserver:${VERSION}" --name="${HOST_CLUSTER_NAME}"
-kind load docker-image "${REGISTRY}/karmada-search:${VERSION}" --name="${HOST_CLUSTER_NAME}"
-kind load docker-image "${REGISTRY}/karmada-metrics-adapter:${VERSION}" --name="${HOST_CLUSTER_NAME}"
-
-#step5. install karmada control plane components
-"${REPO_ROOT}"/hack/deploy-karmada.sh "${MAIN_KUBECONFIG}" "${HOST_CLUSTER_NAME}"
+export VERSION="latest"
+export REGISTRY="docker.io/karmada"
+make image-karmada-operator GOOS="linux" --directory=.
 
 #step6. wait until the member cluster ready and join member clusters
 util::check_clusters_ready "${MEMBER_CLUSTER_1_TMP_CONFIG}" "${MEMBER_CLUSTER_1_NAME}"
 util::check_clusters_ready "${MEMBER_CLUSTER_2_TMP_CONFIG}" "${MEMBER_CLUSTER_2_NAME}"
+
+"${REPO_ROOT}"/hack/deploy-karmada-operator.sh "${MAIN_KUBECONFIG}" "${HOST_CLUSTER_NAME}"
 
 # connecting networks between karmada-host, member1 and member2 clusters
 echo "connecting cluster networks..."
