@@ -1,6 +1,7 @@
 name: image-scanning
 on:
-  push: 
+  push:
+  pull_request:
 jobs:
   use-trivy-to-scan-image:
     name: image-scanning
@@ -24,12 +25,17 @@ jobs:
     steps:
       - name: checkout code
         uses: actions/checkout@v3
+        with:
+          # Number of commits to fetch. 0 indicates all history for all branches and tags.
+          # We need to guess version via git tags.
+          fetch-depth: 0
       - name: Build an image from Dockerfile
         run: |
           export VERSION="latest"
           export REGISTRY="docker.io/karmada"
           make image-${{ matrix.target }}
       - name: Run Trivy vulnerability scanner
+        if: ${{ github.event_name == 'push' }}
         uses: aquasecurity/trivy-action@0.12.0
         with:
           image-ref: 'docker.io/karmada/${{ matrix.target }}:latest'
@@ -37,14 +43,16 @@ jobs:
           ignore-unfixed: true
           vuln-type: 'os,library'
           output: 'trivy-results.sarif'
+      - name: Upload Trivy scan results to GitHub Security tab
+        if: ${{ github.event_name == 'push' }}
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'trivy-results.sarif'
       - name: display scan results
+        if: ${{ github.event_name == 'pull_request' }}
         uses: aquasecurity/trivy-action@0.12.0
         with:
           image-ref: 'docker.io/karmada/${{ matrix.target }}:latest'
           format: 'table'
           ignore-unfixed: true
           vuln-type: 'os,library'
-      - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v2
-        with:
-          sarif_file: 'trivy-results.sarif'          
