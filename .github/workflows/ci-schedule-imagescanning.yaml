@@ -66,8 +66,8 @@ jobs:
       - name: view sarif
         run: |
           cat trivy-results.sarif
-          echo "==============================================="
-          echo ${GITHUB_SHA}
+          git show ${{ github.sha }}
+          echo ${{ github.sha }}
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v2
         with:
