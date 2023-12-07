@@ -8,8 +8,8 @@ jobs:
     # prevent job running from forked repository
     runs-on: ubuntu-22.04
     env:
-      UPLOAD_REF: ""
-      UPLOAD_SHA: ""
+      UPLOAD_REF: ${{ steps.gen commit id.outputs.ref }}
+      UPLOAD_SHA: ${{ steps.gen commit id.outputs.sha }}
     strategy:
       fail-fast: false
       matrix:
@@ -45,8 +45,8 @@ jobs:
           ref: ${{ matrix.karmada-version }}
       - name: gen commit id
         run: |
-          UPLOAD_REF=$(git rev-parse --symbolic-full-name  HEAD)
-          UPLOAD_SHA=$(git rev-parse HEAD)
+          echo "::set-output name=ref::$(git rev-parse --symbolic-full-name  HEAD)"
+          echo "::set-output name=sha::$(git rev-parse HEAD)"
           echo ${{ env.UPLOAD_REF }}
           echo ${{ env.UPLOAD_SHA }}
 #      - name: install Go
