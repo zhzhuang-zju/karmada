@@ -8,7 +8,6 @@ jobs:
   use-trivy-to-scan-image:
     name: image scannning
     # prevent job running from forked repository
-    if: ${{ github.repository == 'karmada-io/karmada' }}
     runs-on: ubuntu-22.04
     strategy:
       matrix:
