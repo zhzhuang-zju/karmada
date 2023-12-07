@@ -75,4 +75,4 @@ jobs:
         with:
           sarif_file: 'trivy-results.sarif'
           ref: ${{ matrix.karmada-version }}
-          sha: ${{ COMMIT_SHA }}
+          sha: $COMMIT_SHA
