@@ -7,6 +7,9 @@ jobs:
     name: image scannning
     # prevent job running from forked repository
     runs-on: ubuntu-22.04
+    env:
+      UPLOAD_REF: ""
+      UPLOAD_SHA: ""
     strategy:
       fail-fast: false
       matrix:
@@ -42,11 +45,8 @@ jobs:
           ref: ${{ matrix.karmada-version }}
       - name: gen commit id
         run: |
-          echo ${{ github.workspace }}
-          echo ${{ github.sha }}
-          echo ${{ github.ref }}
-          echo $GITHUB_REF
-          echo $GITHUB_SHA
+          env.UPLOAD_REF= $(git rev-parse --symbolic-full-name  HEAD)
+          env.UPLOAD_SHA= $(git rev-parse HEAD)
 #      - name: install Go
 #        uses: actions/setup-go@v3
 #        with:
@@ -76,9 +76,6 @@ jobs:
 #          cat trivy-results.sarif
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v2
-        env:
-          UPLOAD_REF: $(git rev-parse --symbolic-full-name  HEAD)
-          UPLOAD_SHA: $(git rev-parse HEAD)
         with:
           sarif_file: 'trivy-results.sarif'
           ref: ${{ env.UPLOAD_REF }}
