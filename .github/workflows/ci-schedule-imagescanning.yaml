@@ -1,7 +1,7 @@
 name: image-scanning-on-schedule
 on:
   schedule:
-    # Run this workflow "At 20:00 UTC on Sunday"
+    # Run this workflow "At 00:00 UTC on Sunday"
     - cron: '0 0 * * 0'
 
 jobs:
@@ -12,17 +12,28 @@ jobs:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
-        karmada-version: [ release-1.5, release-1.6, release-1.7 ]
+        karmada-version: [ release-1.6, release-1.7, release-1.8 ]
         include:
-        - karmada-version: release-1.5
-          go-version: 1.19.5
-
         - karmada-version: release-1.6
           go-version: 1.20.5
 
         - karmada-version: release-1.7
           go-version: 1.20.6
-    
+
+        - karmada-version: release-1.8
+          go-version: 1.20.11
+        target:
+          - karmada-controller-manager
+          - karmada-scheduler
+          - karmada-descheduler
+          - karmada-webhook
+          - karmada-agent
+          - karmada-scheduler-estimator
+          - karmada-interpreter-webhook-example
+          - karmada-aggregated-apiserver
+          - karmada-search
+          - karmada-operator
+          - karmada-metrics-adapter
     steps:
       - name: checkout code
         uses: actions/checkout@v3
@@ -39,29 +50,23 @@ jobs:
         run: |
           export VERSION=${{ matrix.karmada-version }}
           export REGISTRY="docker.io/karmada"
-          make images GOOS="linux" --directory=.
-      - name: install trivy
-        run: |
-          sudo apt-get install wget apt-transport-https gnupg lsb-release
-          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
-          echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee -a /etc/apt/sources.list.d/trivy.list
-          sudo apt-get update
-          sudo apt-get install trivy      
+          make image-${{ matrix.target }}
       - name: Run Trivy vulnerability scanner
-        run: |
-          imageIds=(`docker images -q`)
-          mkdir trivy
-          for id in ${imageIds[@]}
-          do 
-            image=$(docker images|grep $id| sed 's/[ ][ ]*/,/g')
-            IFS=","
-            imageInfo=($image)
-            if [[ ${imageInfo[0]} == *karmada-* ]]
-            then
-              imageref="${imageInfo[0]}:${imageInfo[1]}"
-              trivy image --format table --ignore-unfixed --vuln-type os,library --severity  UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL --output trivy/trivy-$id.table $imageref
-            fi
-          done
+        uses: aquasecurity/trivy-action@0.12.0
+        with:
+          image-ref: 'docker.io/karmada/${{ matrix.target }}:latest'
+          format: 'sarif'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          output: '${{ matrix.karmada-version }}.${{ matrix.target }}.trivy-results.sarif'
       - name: display scan results
-        run: |
-          cat trivy/*.table
+        uses: aquasecurity/trivy-action@0.12.0
+        with:
+          image-ref: 'docker.io/karmada/${{ matrix.target }}:latest'
+          format: 'table'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: '${{ matrix.karmada-version }}.${{ matrix.target }}.trivy-results.sarif'
