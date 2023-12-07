@@ -1,8 +1,6 @@
 name: image-scanning-on-schedule
 on:
-  schedule:
-    # Run this workflow "At 00:00 UTC on Sunday"
-    - cron: '0 0 * * 0'
+  push:
 
 jobs:
   use-trivy-to-scan-image:
