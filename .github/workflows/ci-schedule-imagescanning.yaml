@@ -63,6 +63,9 @@ jobs:
           format: 'table'
           ignore-unfixed: true
           vuln-type: 'os,library'
+      - name: view sarif
+        run: |
+          cat trivy-results.sarif
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v2
         with:
