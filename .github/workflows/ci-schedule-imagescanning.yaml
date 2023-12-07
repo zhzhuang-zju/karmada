@@ -45,8 +45,8 @@ jobs:
           ref: ${{ matrix.karmada-version }}
       - name: gen commit id
         run: |
-          env.UPLOAD_REF= $(git rev-parse --symbolic-full-name  HEAD)
-          env.UPLOAD_SHA= $(git rev-parse HEAD)
+          UPLOAD_REF = $(git rev-parse --symbolic-full-name  HEAD)
+          UPLOAD_SHA = $(git rev-parse HEAD)
 #      - name: install Go
 #        uses: actions/setup-go@v3
 #        with:
