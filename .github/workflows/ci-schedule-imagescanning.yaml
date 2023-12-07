@@ -81,5 +81,5 @@ jobs:
           UPLOAD_SHA: $(git rev-parse HEAD)
         with:
           sarif_file: 'trivy-results.sarif'
-          ref: $UPLOAD_REF
-          sha: $UPLOAD_SHA
+          ref: ${{ env.UPLOAD_REF }}
+          sha: ${{ env.UPLOAD_SHA }}
