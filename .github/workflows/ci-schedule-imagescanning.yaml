@@ -74,9 +74,12 @@ jobs:
 #      - name: view sarif
 #        run: |
 #          cat trivy-results.sarif
-#      - name: Upload Trivy scan results to GitHub Security tab
-#        uses: github/codeql-action/upload-sarif@v2
-#        with:
-#          sarif_file: 'trivy-results.sarif'
-#          ref: ${{ matrix.karmada-version }}
-#          sha: $COMMIT_SHA
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v2
+        env:
+          UPLOAD_REF: $(git rev-parse --symbolic-full-name  HEAD)
+          UPLOAD_SHA: $(git rev-parse HEAD)
+        with:
+          sarif_file: 'trivy-results.sarif'
+          ref: $UPLOAD_REF
+          sha: $UPLOAD_SHA
