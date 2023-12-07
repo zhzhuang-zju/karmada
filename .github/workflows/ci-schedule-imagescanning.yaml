@@ -40,6 +40,9 @@ jobs:
           # We need to guess version via git tags.
           fetch-depth: 0
           ref: ${{ matrix.karmada-version }}
+      - name: gen commit id
+        run: |
+          export COMMIT_SHA=$(git rev-parse HEAD)
       - name: install Go
         uses: actions/setup-go@v3
         with:
@@ -72,4 +75,4 @@ jobs:
         with:
           sarif_file: 'trivy-results.sarif'
           ref: ${{ matrix.karmada-version }}
-          sha: $(git rev-parse HEAD)
+          sha: ${{ COMMIT_SHA }}
