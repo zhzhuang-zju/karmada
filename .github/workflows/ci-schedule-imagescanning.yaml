@@ -8,8 +8,8 @@ jobs:
     # prevent job running from forked repository
     runs-on: ubuntu-22.04
     env:
-      UPLOAD_REF: ${{ steps.gen commit id.outputs.ref }}
-      UPLOAD_SHA: ${{ steps.gen commit id.outputs.sha }}
+      UPLOAD_REF: ${{ steps.ssss.outputs.ref }}
+      UPLOAD_SHA: ${{ steps.ssss.outputs.sha }}
     strategy:
       fail-fast: false
       matrix:
@@ -44,6 +44,7 @@ jobs:
           fetch-depth: 0
           ref: ${{ matrix.karmada-version }}
       - name: gen commit id
+        id: ssss
         run: |
           echo "::set-output name=ref::$(git rev-parse --symbolic-full-name  HEAD)"
           echo "::set-output name=sha::$(git rev-parse HEAD)"
