@@ -8,6 +8,7 @@ jobs:
     # prevent job running from forked repository
     runs-on: ubuntu-22.04
     strategy:
+      fail-fast: false
       matrix:
         karmada-version: [ release-1.6, release-1.7, release-1.8 ]
         include:
@@ -66,10 +67,9 @@ jobs:
       - name: view sarif
         run: |
           cat trivy-results.sarif
-          git show ${{ github.sha }}
-          echo ${{ github.sha }}
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v2
         with:
           sarif_file: 'trivy-results.sarif'
           ref: ${{ matrix.karmada-version }}
+          sha: $(git rev-parse HEAD)
