@@ -21,16 +21,16 @@ jobs:
         - karmada-version: release-1.8
           go-version: 1.20.11
         target:
-#          - karmada-controller-manager
-#          - karmada-scheduler
-#          - karmada-descheduler
-#          - karmada-webhook
-#          - karmada-agent
-#          - karmada-scheduler-estimator
-#          - karmada-interpreter-webhook-example
-#          - karmada-aggregated-apiserver
-#          - karmada-search
-#          - karmada-operator
+          - karmada-controller-manager
+          - karmada-scheduler
+          - karmada-descheduler
+          - karmada-webhook
+          - karmada-agent
+          - karmada-scheduler-estimator
+          - karmada-interpreter-webhook-example
+          - karmada-aggregated-apiserver
+          - karmada-search
+          - karmada-operator
           - karmada-metrics-adapter
     steps:
       - name: checkout code
@@ -40,44 +40,37 @@ jobs:
           # We need to guess version via git tags.
           fetch-depth: 0
           ref: ${{ matrix.karmada-version }}
-      - name: gen commit id
-        id: ssss
+      - id: gen_git_info
         run: |
           echo "ref=$(git rev-parse --symbolic-full-name  HEAD)" >> "$GITHUB_OUTPUT"
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-#      - name: install Go
-#        uses: actions/setup-go@v3
-#        with:
-#          go-version: ${{ matrix.go-version }}
-#      - name: Build images from Dockerfile
-#        run: |
-#          export VERSION=${{ matrix.karmada-version }}
-#          export REGISTRY="docker.io/karmada"
-#          make image-${{ matrix.target }}
-#      - name: Run Trivy vulnerability scanner
-#        uses: aquasecurity/trivy-action@0.12.0
-#        with:
-#          image-ref: 'docker.io/karmada/${{ matrix.target }}:latest'
-#          format: 'sarif'
-#          ignore-unfixed: true
-#          vuln-type: 'os,library'
-#          output: 'trivy-results.sarif'
-#      - name: display scan results
-#        uses: aquasecurity/trivy-action@0.12.0
-#        with:
-#          image-ref: 'docker.io/karmada/${{ matrix.target }}:latest'
-#          format: 'table'
-#          ignore-unfixed: true
-#          vuln-type: 'os,library'
-#      - name: view sarif
-#        run: |
-#          cat trivy-results.sarif
+      - name: install Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: ${{ matrix.go-version }}
+      - name: Build images from Dockerfile
+        run: |
+          export VERSION=${{ matrix.karmada-version }}
+          export REGISTRY="docker.io/karmada"
+          make image-${{ matrix.target }}
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@0.12.0
+        with:
+          image-ref: 'docker.io/karmada/${{ matrix.target }}:${{ matrix.karmada-version }}'
+          format: 'sarif'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          output: '${{ matrix.target }}:${{ matrix.karmada-version }}.trivy-results.sarif'
+      - name: display scan results
+        uses: aquasecurity/trivy-action@0.12.0
+        with:
+          image-ref: 'docker.io/karmada/${{ matrix.target }}:${{ matrix.karmada-version }}'
+          format: 'table'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v2
-#        env:
-#          Upload_Ref: ${{steps.ssss.outputs.ref}}
-#          Upload_Sha: ${{steps.ssss.outputs.sha}}
         with:
-          sarif_file: 'trivy-results.sarif'
-          ref: ${{steps.ssss.outputs.ref}}
-          sha: ${{steps.ssss.outputs.sha}}
+          sarif_file: '${{ matrix.target }}:${{ matrix.karmada-version }}.trivy-results.sarif'
+          ref: ${{steps.gen_git_info.outputs.ref}}
+          sha: ${{steps.gen_git_info.outputs.sha}}
