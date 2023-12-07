@@ -43,8 +43,8 @@ jobs:
       - name: gen commit id
         id: ssss
         run: |
-          export Upload_Ref=$(git rev-parse --symbolic-full-name  HEAD)
-          export Upload_Sha=$(git rev-parse HEAD)
+          echo "ref=$(git rev-parse --symbolic-full-name  HEAD)" >> "$GITHUB_OUTPUT"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 #      - name: install Go
 #        uses: actions/setup-go@v3
 #        with:
@@ -74,7 +74,10 @@ jobs:
 #          cat trivy-results.sarif
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v2
+        env:
+          Upload_Ref: ${{steps.ssss.outputs.ref}}
+          Upload_Sha: ${{steps.ssss.outputs.sha}}
         with:
           sarif_file: 'trivy-results.sarif'
-          ref: $Upload_Ref
-          sha: $Upload_Sha
+          ref: ${{ env.Upload_Ref }}
+          sha: ${{ env.Upload_Sha }}
