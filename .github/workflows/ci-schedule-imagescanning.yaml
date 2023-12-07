@@ -7,7 +7,7 @@ jobs:
     name: image scannning
     # prevent job running from forked repository
     runs-on: ubuntu-22.04
-    env:
+    outputs:
       UPLOAD_REF: ${{ steps.ssss.outputs.ref }}
       UPLOAD_SHA: ${{ steps.ssss.outputs.sha }}
     strategy:
