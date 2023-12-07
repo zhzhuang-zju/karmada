@@ -47,6 +47,8 @@ jobs:
         run: |
           UPLOAD_REF=$(git rev-parse --symbolic-full-name  HEAD)
           UPLOAD_SHA=$(git rev-parse HEAD)
+          echo ${{ env.UPLOAD_REF }}
+          echo ${{ env.UPLOAD_SHA }}
 #      - name: install Go
 #        uses: actions/setup-go@v3
 #        with:
