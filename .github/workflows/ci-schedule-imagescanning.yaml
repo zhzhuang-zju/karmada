@@ -74,10 +74,7 @@ jobs:
 #          cat trivy-results.sarif
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v2
-        env:
-          UPLOAD_REF: $Upload_Ref
-          UPLOAD_SHA: $Upload_Sha
         with:
           sarif_file: 'trivy-results.sarif'
-          ref: ${{ env.UPLOAD_REF }}
-          sha: ${{ env.UPLOAD_SHA }}
+          ref: $Upload_Ref
+          sha: $Upload_Sha
