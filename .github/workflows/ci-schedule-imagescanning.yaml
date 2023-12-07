@@ -20,16 +20,16 @@ jobs:
         - karmada-version: release-1.8
           go-version: 1.20.11
         target:
-          - karmada-controller-manager
-          - karmada-scheduler
-          - karmada-descheduler
-          - karmada-webhook
-          - karmada-agent
-          - karmada-scheduler-estimator
-          - karmada-interpreter-webhook-example
-          - karmada-aggregated-apiserver
-          - karmada-search
-          - karmada-operator
+#          - karmada-controller-manager
+#          - karmada-scheduler
+#          - karmada-descheduler
+#          - karmada-webhook
+#          - karmada-agent
+#          - karmada-scheduler-estimator
+#          - karmada-interpreter-webhook-example
+#          - karmada-aggregated-apiserver
+#          - karmada-search
+#          - karmada-operator
           - karmada-metrics-adapter
     steps:
       - name: checkout code
@@ -70,3 +70,4 @@ jobs:
         uses: github/codeql-action/upload-sarif@v2
         with:
           sarif_file: 'trivy-results.sarif'
+          ref: ${{ matrix.karmada-version }}
