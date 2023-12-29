@@ -52,6 +52,7 @@
 name: image-scanning-on-schedule
 on:
   pull_request:
+  push:
 jobs:
   use-trivy-to-scan-image:
     name: image-scanning
