@@ -24,7 +24,7 @@ set -o pipefail
 
 function usage() {
     echo "Usage:"
-    echo "    hack/scan-image-vuln.sh [-i imageRef] [-r registry] [-v version] [-s skip-image-generation] [-h]"
+    echo "    hack/scan-image-vuln.sh [-i imageRef] [-r registry] [-v version] [-s skip-image-generation] [-f format][-h]"
     echo "Examples:"
     echo "    # starts a images scanning with specific image provided"
     echo "    hack/scan-image-vuln.sh -i docker.io/karmada/karmada-controller-manager:v1.8.0"
@@ -43,10 +43,7 @@ function usage() {
     echo "    h: print help information"
 }
 
-SKIP_IMAGE_GENERAION="false"
-IMAGEREF=""
-
-while getopts 'h:si:r:v:' OPT; do
+while getopts 'h:si:r:v:f:' OPT; do
     case $OPT in
         h)
           usage
@@ -60,12 +57,18 @@ while getopts 'h:si:r:v:' OPT; do
        		REGISTRY=${OPTARG};;
         v)
         	VERSION=${OPTARG};;
+        f)
+        	FORMAT=${OPTARG};;
         ?)
           usage
           exit 1
           ;;
     esac
 done
+
+FORMAT=${FORMAT:-"table"}
+SKIP_IMAGE_GENERAION=${SKIP_IMAGE_GENERAION:-"false"}
+IMAGEREF=${IMAGEREF:-""}
 
 source "hack/util.sh"
 
@@ -79,7 +82,7 @@ fi
 
 if [ ${IMAGEREF} ];then
 	echo "---------------------------- the image scanning result of Image <<${IMAGEREF}>> ----------------------------"
-  trivy image --format table --ignore-unfixed --vuln-type os,library --severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL -q ${IMAGEREF}
+  trivy image --format ${FORMAT} --ignore-unfixed --vuln-type os,library --severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL -q ${IMAGEREF}
   exit 0
 fi
 
@@ -110,5 +113,5 @@ for image in ${IMAGE_ARRAR[@]}
 do
   imageRef="$REGISTRY/$image:$VERSION"
   echo "---------------------------- the image scanning result of Image <<$imageRef>> ----------------------------"
-  trivy image --format table --ignore-unfixed --vuln-type os,library --severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL -q $imageRef
+  trivy image --format ${FORMAT} --ignore-unfixed --vuln-type os,library --severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL -q $imageRef
 done
