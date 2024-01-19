@@ -1,7 +1,6 @@
 name: image-scanning
 on:
   pull_request:
-  push:
 jobs:
   use-trivy-to-scan-image:
     name: image scannning
@@ -25,10 +24,10 @@ jobs:
           echo "pkgName_arr=($(echo "${vulns_on_pr}" | grep PkgName | awk '{print $2}' | tr ',\n' '\0' | xargs -0))" >> "$GITHUB_OUTPUT"
           echo "cve_arr=($(echo "${vulns_on_pr}" | grep VulnerabilityID | awk '{print $2}' | tr ',\n' '\0' | xargs -0))" >> "$GITHUB_OUTPUT"
           echo "fixedVersion_arr=($(echo "${vulns_on_pr}" | grep FixedVersion | awk '{print $2}' | tr ',\n' '\0' | xargs -0))" >> "$GITHUB_OUTPUT"
-      - name: chekcout to head code
+      - name: chekcout to base code
         uses: actions/checkout@v3
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event.pull_request.base.sha }}
       - name: collect head branch vulnerability data
         id: Collect_head_branch_vulnerability_data
         run: |
