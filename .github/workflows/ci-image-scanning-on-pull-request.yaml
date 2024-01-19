@@ -18,7 +18,8 @@ jobs:
       - name: Image scan
         run: |
           hack/scan-image-vuln.sh -f table
-      - id: Collect_vulnerability_data
+      - name: collect vulnerability data
+        id: Collect_vulnerability_data
         run: |
           vulns_on_pr=$(hack/scan-image-vuln.sh -s -f json)
           echo "pkgName_arr=($(echo "${vulns_on_pr}" | grep PkgName | awk '{print $2}' | tr ',\n' '\0' | xargs -0))" >> "$GITHUB_OUTPUT"
@@ -28,16 +29,18 @@ jobs:
         uses: actions/checkout@v3
         with:
           ref: ${{ github.event.pull_request.head.sha }}
-      - id: Collect_head_branch_vulnerability_data
+      - name: collect head branch vulnerability data
+        id: Collect_head_branch_vulnerability_data
         run: |
           vulns_on_head=$(hack/scan-image-vuln.sh -f json)
           echo "pkgName_head_arr=($(echo "${vulns_on_head}" | grep PkgName | awk '{print $2}' | tr ',\n' '\0' | xargs -0))" >> "$GITHUB_OUTPUT"
           echo "cve_head_arr=($(echo "${vulns_on_head}" | grep VulnerabilityID | awk '{print $2}' | tr ',\n' '\0' | xargs -0))" >> "$GITHUB_OUTPUT"
-      - name: Determine if there are any new vulnerabilities
+      - name: Vulnerability analysis
         run: |
           pkgName_arr=${{steps.Collect_vulnerability_data.outputs.pkgName_arr}}
           cve_arr=${{steps.Collect_vulnerability_data.outputs.cve_arr}}
           fixedVersion_arr=${{steps.Collect_vulnerability_data.outputs.fixedVersion_arr}}
+          # Assemble the vulnerability information scanned from PR into a map.
           declare -A prVulnMap
           for ((i=0; i<${#cve_arr[@]}; i++));
           do 
@@ -46,25 +49,26 @@ jobs:
           
           pkgName_head_arr=${{steps.Collect_head_branch_vulnerability_data.outputs.pkgName_head_arr}}
           cve_head_arr=${{steps.Collect_head_branch_vulnerability_data.outputs.cve_head_arr}}
+          # Assemble the vulnerability information scanned from HEAD into a map.
           declare -A headVulnMap
           for ((i=0; i<${#cve_head_arr[@]}; i++));
           do 
             headVulnMap["Library:${pkgName_head_arr[$i]} Vulnerability:${cve_head_arr[$i]}"]=" "
           done  
           
-          echo "=============fixed vuln============="
+          echo "============= The vulnerabilities fixed by this PR are as follows: ============="
           for key in "${!headVulnMap[@]}";
           do 
             if [[ ! -v prVulnMap[$key] ]]; then
-              echo "${key} has been fixed in this pr"
+              echo "<<${key}>> has been fixed in this pr"
             fi
           done
           
-          echo "=============warn: add vuln============="
+          echo "============= warn: The vulnerabilities introduced by this PR are as follows: ============="
           for key in "${!prVulnMap[@]}";
           do 
             if [[ ! -v headVulnMap[$key] ]]; then
-              echo "This PR introduces a security vulnerability ${key}, which can be resolved by bumping to ${prVulnMap[${key}]}."
+              echo "This PR introduces a new security vulnerability: <<${key}>>, which can be resolved by bumping to ${prVulnMap[${key}]}."
             fi
           done
 
