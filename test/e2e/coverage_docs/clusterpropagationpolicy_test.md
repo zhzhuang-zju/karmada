@@ -29,8 +29,3 @@
 |-----------------------------------------------------|-------------------------------------------------------------------------------------------------|------------|
 | Test delete clusterpropagationpolicy for deployment | delete ClusterPropagationPolicy and check whether labels are deleted correctly(namespace scope) |            |
 | Test delete clusterpropagationpolicy for CRD        | delete ClusterPropagationPolicy and check whether labels are deleted correctly(cluster scope)   |            |
-
-#### TODO
-1. May need add the test case when the [deployment updates](https://karmada.io/docs/next/userguide/scheduling/resource-propagating#update-deployment).
-2. May need add the test case for the **same implicit priority** propagation.
-3. May need add the test case for **delete** the clusterPropagationPolicy.
