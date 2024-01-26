@@ -126,3 +126,36 @@ func dynamicScaleUp(state *assignState) ([]workv1alpha2.TargetCluster, error) {
 	})
 	return dynamicDivideReplicas(state)
 }
+
+func dynamicReshuffle(state *assignState) ([]workv1alpha2.TargetCluster, error) {
+	// The previous scheduling result will be the weight reference of horizontalScaling.
+	// In other words, we scale down the replicas proportionally by their scheduled replicas.
+	// Now:
+	// 1. targetReplicas is set to desired replicas.
+	// 2. availableClusters is set to the former schedule result.
+	// 3. scheduledClusters and assignedReplicas are not set, which implicates we consider this action as a first schedule.
+	var scheduledClusters []workv1alpha2.TargetCluster
+	clusterMap := make(map[string]string, len(state.candidates))
+	for _, candidate := range state.candidates {
+		clusterMap[candidate.Name] = ""
+	}
+	for _, cluster := range state.scheduledClusters {
+		if _, ok := clusterMap[cluster.Name]; ok {
+			scheduledClusters = append(scheduledClusters, cluster)
+		}
+	}
+	// The current allocated cluster meets the clusterAffinity.
+	if len(state.candidates) == len(scheduledClusters) && len(state.candidates) == len(state.scheduledClusters) {
+		return state.scheduledClusters, nil
+	}
+
+	// refresh state
+	state.scheduledClusters = scheduledClusters
+	state.assignedReplicas = util.GetSumOfReplicas(scheduledClusters)
+
+	result, err := dynamicScaleUp(state)
+	if err != nil {
+		return nil, fmt.Errorf("failed to scale down: %v", err)
+	}
+	return result, nil
+}

@@ -182,5 +182,5 @@ func assignByDynamicStrategy(state *assignState) ([]workv1alpha2.TargetCluster, 
 		return result, nil
 	}
 
-	return state.scheduledClusters, nil
+	return dynamicReshuffle(state)
 }
