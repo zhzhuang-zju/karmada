@@ -9,7 +9,6 @@ jobs:
   e2e:
     name: e2e test
     # prevent job running from forked repository
-    if: ${{ github.repository == 'karmada-io/karmada' }}
     runs-on: ubuntu-22.04
     strategy:
       # max-parallel limits the max number of jobs running at the same time.
