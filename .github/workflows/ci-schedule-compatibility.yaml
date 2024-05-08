@@ -4,7 +4,7 @@ on:
     # Run this workflow "At 20:00 UTC on Sunday and Saturday"
     - cron: '0 20 * * 0,6'
   pull_request:
-
+  push:
 jobs:
   e2e:
     name: e2e test
