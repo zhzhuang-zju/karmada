@@ -27,18 +27,44 @@ Download v1.10.0 in the [v1.10.0 release page](https://github.com/karmada-io/kar
 
 ## What's New
 
-### WorkloadRebalancer
+### Workload Rebalance
 
-The karmada scheduler now supports workload rebalancer that can actively trigger a fresh rescheduling, which disregards the previous assignment entirely and seeks to establish an entirely new replica distribution across clusters.
+This release introduced a workload rebalancing capability. It can actively trigger a brand fresh rescheduling to establish an entirely new replica distribution across clusters. With the workload rebalancing capability, users can trigger a workload rebalancing on demand if the current replicas distribution is not optimal.
 
-See [Proposal of introducing a rebalance mechanism to actively trigger rescheduling of resource](https://github.com/karmada-io/karmada/pull/4698) for more details.
+See [Proposal of introducing a rebalance mechanism to actively trigger rescheduling of resource](https://github.com/karmada-io/karmada/blob/master/docs/proposals/scheduling/workload-rebalancer/workload-rebalancer.md) for more details.
 
 (Feature contributors: @chaosi-zju)
+
+### Free the resource template name from the limitation of label length
+
+Previously, since the resource template name was eventually assembled as part of the label `work.karmada.io/name`, its length will be limited to less than 64. Starting from `v1.8.0`, Karmada has introduced label `permanent-id` to replace the role of resource template names in labels through smooth migration. 
+
+In this release, a lot of effort was spent to remove the deprecated labels and make label `permanent-id` work, freeing the length of the resource template name from the limitation of the label length.
+
+See [[Umbrella] Use permanent-id to replace namespace/name labels in the resource](https://github.com/karmada-io/karmada/issues/4711) for more details.
+
+(Feature contributors: @XiShanYongYe-Chang, @whitewindmills, @liangyuanpeng)
+
+### Usability and reliability Enhancements in the production environment
+
+这个版本我们收到了很多小伙伴的生产级的issue和建议，在这个基础上，Karmada花费了很多心血完成了相关的实现和优化，提高了karmada在生产环境的易用性和可靠性。
+
+In this release, Karmada received a lot of production-level issues and suggestions, and based on that, Karmada spent a lot of effort to complete the implementation and optimization.
+
+This release significantly enhanced the project's usability and reliability including:
+
+- Performance Optimization: optimize deprioritized policy preemption logic and significantly reduce memory usage of `karmada metrics adapter` and so on.
+
+- Security Enhancements: upgrade rsa key size from 2018 to 3072 and grant the correct permissions when creating files and so on.
+
+- Software Ecosystem: show `status.labelSelector` for `CloneSet` and so on.
+
 
 ## Other Notable Changes
 ### API Changes
 - Introduced `ServiceAnnotations` to the `Karmada` API to provide an extra set of annotations to annotate karmada apiserver services. ([#4679](https://github.com/karmada-io/karmada/pull/4679), @calvin0327)
 - Add a short name for resourceinterpretercustomizations CRD resource. ([#4872](https://github.com/karmada-io/karmada/pull/4872), @XiShanYongYe-Chang)
+- Introduce a new API named `WorkloadRebalancer` to support rescheduling.
 
 ### Deprecation
 - The following labels have been deprecated from release `v1.8.0` and now have been removed:

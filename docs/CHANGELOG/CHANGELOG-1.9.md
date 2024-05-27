@@ -100,7 +100,7 @@ It is in alpha state and controlled by the feature gate `ResourceQuotaEstimate`,
 - `karmadactl`: Fixed return err in case of  secret.spec. caBundle is nil. ([#4371](https://github.com/karmada-io/karmada/pull/4371), @CharlesQQ)
 - `karmadactl`:  Register cluster install karmada-agent should set leader-elect-resouce-namespace. ([#4404](https://github.com/karmada-io/karmada/pull/4404), @yanfeng1992)
 - `karmada-search`: Add the logic of checking whether the resource API to be retrieved is installed in the cluster. ([#4554](https://github.com/karmada-io/karmada/pull/4554), @yanfeng1992)
-- karmada-search: support accept content type `as=Table` in the proxy global resource function. ([#4580](https://github.com/karmada-io/karmada/pull/4580), @niuyueyang1996)
+- `karmada-search`: support accept content type `as=Table` in the proxy global resource function. ([#4580](https://github.com/karmada-io/karmada/pull/4580), @niuyueyang1996)
 - `karmada-scheduler`: reschedule the replicas of the disappear clusters in PP/CPP. ([#4586](https://github.com/karmada-io/karmada/pull/4586), @jwcesign)
 - `karmada-operator`: Fixed the issue that the component can not be redeployed due to service update is not allowed. ([#4649](https://github.com/karmada-io/karmada/pull/4649), @laihezhao)
 
