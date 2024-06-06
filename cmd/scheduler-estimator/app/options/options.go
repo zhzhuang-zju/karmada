@@ -21,6 +21,7 @@ import (
 
 	"github.com/karmada-io/karmada/pkg/features"
 	"github.com/karmada-io/karmada/pkg/sharedcli/profileflag"
+	"github.com/karmada-io/karmada/pkg/util"
 )
 
 const (
@@ -47,6 +48,7 @@ type Options struct {
 	// Parallelism defines the amount of parallelism in algorithms for estimating. Must be greater than 0. Defaults to 16.
 	Parallelism int
 	ProfileOpts profileflag.Options
+	GrpcOpts    util.GrpcInfo
 }
 
 // NewOptions builds an empty options.
@@ -68,6 +70,11 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.Float32Var(&o.ClusterAPIQPS, "kube-api-qps", 20.0, "QPS to use while talking with apiserver.")
 	fs.IntVar(&o.ClusterAPIBurst, "kube-api-burst", 30, "Burst to use while talking with apiserver.")
 	fs.IntVar(&o.Parallelism, "parallelism", o.Parallelism, "Parallelism defines the amount of parallelism in algorithms for estimating. Must be greater than 0. Defaults to 16.")
+	fs.StringVar(&o.GrpcOpts.CertFile, "cert-file", "", "")
+	fs.StringVar(&o.GrpcOpts.KeyFile, "key-file", "", "")
+	fs.BoolVar(&o.GrpcOpts.ClientCertAuth, "client-cert-auth", false, "")
+	fs.StringVar(&o.GrpcOpts.TrustedCaFile, "trusted-ca-file", "", "")
+
 	features.FeatureGate.AddFlag(fs)
 
 	o.ProfileOpts.AddFlags(fs)

@@ -88,6 +88,8 @@ type Options struct {
 
 	// RateLimiterOpts contains the options for rate limiter.
 	RateLimiterOpts ratelimiterflag.Options
+
+	GrpcInfo util.GrpcInfo
 }
 
 // NewOptions builds an default scheduler options.
@@ -142,6 +144,9 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.StringSliceVar(&o.Plugins, "plugins", []string{"*"},
 		fmt.Sprintf("A list of plugins to enable. '*' enables all build-in and customized plugins, 'foo' enables the plugin named 'foo', '*,-foo' disables the plugin named 'foo'.\nAll build-in plugins: %s.", strings.Join(frameworkplugins.NewInTreeRegistry().FactoryNames(), ",")))
 	fs.StringVar(&o.SchedulerName, "scheduler-name", scheduler.DefaultScheduler, "SchedulerName represents the name of the scheduler. default is 'default-scheduler'.")
+	fs.StringVar(&o.GrpcInfo.CertFile, "cert-file", "", "xxxxxxxxxxxxxxxxxxxxxxxxxxx'.")
+	fs.StringVar(&o.GrpcInfo.KeyFile, "key-file", "", "xxxxxxxxxxxxxxxxxxxxxxxxxxx'.")
+	fs.StringVar(&o.GrpcInfo.TrustedCaFile, "trusted-ca-file", "", "xxxxxxxxxxxxxxxxxxxxxxxxxxx'.")
 	features.FeatureGate.AddFlag(fs)
 	o.ProfileOpts.AddFlags(fs)
 	o.RateLimiterOpts.AddFlags(fs)

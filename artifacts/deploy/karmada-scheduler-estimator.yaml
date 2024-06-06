@@ -27,6 +27,10 @@ spec:
             - /bin/karmada-scheduler-estimator
             - --kubeconfig=/etc/{{member_cluster_name}}-kubeconfig
             - --cluster-name={{member_cluster_name}}
+            - --cert-file=/etc/karmada/pki/karmada.crt
+            - --key-file=/etc/karmada/pki/karmada.key
+            - --client-cert-auth=true
+            - --trusted-ca-file=/etc/karmada/pki/ca.crt
           livenessProbe:
             httpGet:
               path: /healthz
@@ -37,10 +41,16 @@ spec:
             periodSeconds: 15
             timeoutSeconds: 5
           volumeMounts:
+            - name: karmada-certs
+              mountPath: /etc/karmada/pki
+              readOnly: true
             - name: member-kubeconfig
               subPath: {{member_cluster_name}}-kubeconfig
               mountPath: /etc/{{member_cluster_name}}-kubeconfig
       volumes:
+        - name: karmada-certs
+          secret:
+            secretName: karmada-cert-secret
         - name: member-kubeconfig
           secret:
             secretName: {{member_cluster_name}}-kubeconfig

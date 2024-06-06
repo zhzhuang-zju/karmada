@@ -22,18 +22,32 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
+	grpccredentials "google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-// Dial establishes the gRPC communication.
-func Dial(path string, timeout time.Duration) (*grpc.ClientConn, error) {
+type GrpcInfo struct {
+	ClientCertAuth bool
+	TrustedCaFile  string
+	// CertFile is the _server_ cert, it will also be used as a _client_ certificate if ClientCertFile is empty
+	CertFile string
+	// KeyFile is the key for the CertFile
+	KeyFile string
+}
+
+func Dial(path string, timeout time.Duration, creds grpccredentials.TransportCredentials) (*grpc.ClientConn, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	opts := []grpc.DialOption{
 		grpc.WithBlock(),
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	}
+	if creds != nil {
+		opts = append(opts, grpc.WithTransportCredentials(creds))
+	} else {
+		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	}
+
 	cc, err := grpc.DialContext(ctx, path, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("dial %s error: %v", path, err)

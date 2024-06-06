@@ -25,6 +25,7 @@ import (
 	"strings"
 	"time"
 
+	"google.golang.org/grpc/credentials"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -111,6 +112,8 @@ type Scheduler struct {
 	schedulerName                       string
 
 	enableEmptyWorkloadPropagation bool
+
+	grpcInfo util.GrpcInfo
 }
 
 type schedulerOptions struct {
@@ -134,6 +137,7 @@ type schedulerOptions struct {
 	plugins []string
 	// contains the options for rate limiter.
 	RateLimiterOptions ratelimiterflag.Options
+	grpcInfo           util.GrpcInfo
 }
 
 // Option configures a Scheduler
@@ -143,6 +147,13 @@ type Option func(*schedulerOptions)
 func WithEnableSchedulerEstimator(enableSchedulerEstimator bool) Option {
 	return func(o *schedulerOptions) {
 		o.enableSchedulerEstimator = enableSchedulerEstimator
+	}
+}
+
+func WithGRPC(info util.GrpcInfo) Option {
+	klog.Infof("44444444444444444444444 %+v", info)
+	return func(o *schedulerOptions) {
+		o.grpcInfo = info
 	}
 }
 
@@ -244,6 +255,7 @@ func NewScheduler(dynamicClient dynamic.Interface, karmadaClient karmadaclientse
 		queue:                queue,
 		Algorithm:            algorithm,
 		schedulerCache:       schedulerCache,
+		grpcInfo: options.grpcInfo,
 	}
 
 	sched.clusterReconcileWorker = util.NewAsyncWorker(util.Options{
@@ -768,8 +780,13 @@ func (s *Scheduler) reconcileEstimatorConnection(key util.QueueKey) error {
 	if cluster.Spec.SyncMode == clusterv1alpha1.Pull && s.disableSchedulerEstimatorInPullMode {
 		return nil
 	}
+	klog.Infof("888888888888888 %+v", s.grpcInfo)
+	creds, err := credentials.NewClientTLSFromFile("/etc/karmada/pki/karmada.crt", "")
+	if err != nil {
+		klog.Fatalf("failed to load credentials: %v", err)
+	}
 
-	return estimatorclient.EstablishConnection(s.KubeClient, name, s.schedulerEstimatorCache, s.schedulerEstimatorServicePrefix, s.schedulerEstimatorPort)
+	return estimatorclient.EstablishConnection(s.KubeClient, name, s.schedulerEstimatorCache, s.schedulerEstimatorServicePrefix, s.schedulerEstimatorPort, creds)
 }
 
 func (s *Scheduler) establishEstimatorConnections() {
@@ -782,7 +799,15 @@ func (s *Scheduler) establishEstimatorConnections() {
 		if clusterList.Items[i].Spec.SyncMode == clusterv1alpha1.Pull && s.disableSchedulerEstimatorInPullMode {
 			continue
 		}
-		if err = estimatorclient.EstablishConnection(s.KubeClient, clusterList.Items[i].Name, s.schedulerEstimatorCache, s.schedulerEstimatorServicePrefix, s.schedulerEstimatorPort); err != nil {
+
+		klog.Infof("888888888888888 %+v", s.grpcInfo)
+
+		creds, err := credentials.NewClientTLSFromFile("/etc/karmada/pki/karmada.crt", "")
+		if err != nil {
+			klog.Fatalf("failed to load credentials: %v", err)
+		}
+		klog.Infof("9999999999999999 %+v",creds==nil)
+		if err = estimatorclient.EstablishConnection(s.KubeClient, clusterList.Items[i].Name, s.schedulerEstimatorCache, s.schedulerEstimatorServicePrefix, s.schedulerEstimatorPort,creds); err != nil {
 			klog.Error(err)
 		}
 	}

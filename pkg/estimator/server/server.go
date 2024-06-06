@@ -19,11 +19,13 @@ package server
 import (
 	"context"
 	"fmt"
+	"log"
 	"net"
 	"time"
 
 	"github.com/kr/pretty"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -85,6 +87,8 @@ type AccurateSchedulerEstimatorServer struct {
 	estimateFramework framework.Framework
 
 	Cache schedcache.Cache
+
+	GrpcInfo util.GrpcInfo
 }
 
 // NewEstimatorServer creates an instance of AccurateSchedulerEstimatorServer.
@@ -113,6 +117,7 @@ func NewEstimatorServer(
 		},
 		parallelizer: parallelize.NewParallelizer(opts.Parallelism),
 		Cache:        schedcache.New(durationToExpireAssumedPod, stopChan),
+		GrpcInfo:     opts.GrpcOpts,
 	}
 	// ignore the error here because the informers haven't been started
 	_ = informerFactory.Core().V1().Nodes().Informer().SetTransform(fedinformer.StripUnusedFields)
@@ -161,7 +166,30 @@ func (es *AccurateSchedulerEstimatorServer) Start(ctx context.Context) error {
 	klog.Infof("Listening port: %d", es.port)
 	defer l.Close()
 
-	s := grpc.NewServer()
+	klog.Infof("1111111111111 %+v", es.GrpcInfo)
+	creds, err := credentials.NewServerTLSFromFile(es.GrpcInfo.CertFile, es.GrpcInfo.KeyFile)
+	if err != nil {
+		log.Fatalf("failed to create credentials: %v", err)
+	}
+	//cert, err := tls.LoadX509KeyPair(es.GrpcInfo.CertFile, es.GrpcInfo.KeyFile)
+	//if err != nil {
+	//	return err
+	//}
+	// config := &tls.Config{Certificates: []tls.Certificate{cert}}
+	//if es.GrpcInfo.ClientCertAuth {
+	//	config.ClientAuth = tls.RequireAndVerifyClientCert
+	//	certPool := x509.NewCertPool()
+	//	ca, err := os.ReadFile(es.GrpcInfo.TrustedCaFile)
+	//	if err != nil {
+	//		klog.Fatal(err)
+	//	}
+	//	if ok := certPool.AppendCertsFromPEM(ca); !ok {
+	//		klog.Fatal("failed to append ca into certPool")
+	//	}
+	//	config.ClientCAs = certPool
+	//}
+
+	s := grpc.NewServer(grpc.Creds(creds))
 	estimatorservice.RegisterEstimatorServer(s, es)
 
 	// Graceful stop when the context is cancelled.

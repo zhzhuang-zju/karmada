@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
+	grpccredentials "google.golang.org/grpc/credentials"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
 
@@ -96,7 +97,7 @@ func (c *SchedulerEstimatorCache) GetClient(name string) (estimatorservice.Estim
 }
 
 // EstablishConnection establishes a new gRPC connection with the specified cluster scheduler estimator.
-func EstablishConnection(kubeClient kubernetes.Interface, name string, estimatorCache *SchedulerEstimatorCache, estimatorServicePrefix string, port int) error {
+func EstablishConnection(kubeClient kubernetes.Interface, name string, estimatorCache *SchedulerEstimatorCache, estimatorServicePrefix string, port int, creds grpccredentials.TransportCredentials) error {
 	if estimatorCache.IsEstimatorExist(name) {
 		return nil
 	}
@@ -108,7 +109,7 @@ func EstablishConnection(kubeClient kubernetes.Interface, name string, estimator
 	}
 
 	klog.Infof("Start dialing estimator server(%s) of cluster(%s).", serverAddr, name)
-	cc, err := util.Dial(serverAddr, 5*time.Second)
+	cc, err := util.Dial(serverAddr, 20*time.Second, creds)
 	if err != nil {
 		klog.Errorf("Failed to dial cluster(%s): %v.", name, err)
 		return err
