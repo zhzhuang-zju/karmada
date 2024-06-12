@@ -56,6 +56,7 @@ import (
 	"github.com/karmada-io/karmada/pkg/scheduler/metrics"
 	"github.com/karmada-io/karmada/pkg/sharedcli/ratelimiterflag"
 	"github.com/karmada-io/karmada/pkg/util"
+	grpcutil "github.com/karmada-io/karmada/pkg/util/grpc"
 	"github.com/karmada-io/karmada/pkg/util/helper"
 	utilmetrics "github.com/karmada-io/karmada/pkg/util/metrics"
 )
@@ -106,11 +107,12 @@ type Scheduler struct {
 	disableSchedulerEstimatorInPullMode bool
 	schedulerEstimatorCache             *estimatorclient.SchedulerEstimatorCache
 	schedulerEstimatorServicePrefix     string
-	schedulerEstimatorPort              int
 	schedulerEstimatorWorker            util.AsyncWorker
 	schedulerName                       string
 
 	enableEmptyWorkloadPropagation bool
+
+	grpcConfig *grpcutil.Config
 }
 
 type schedulerOptions struct {
@@ -122,8 +124,6 @@ type schedulerOptions struct {
 	schedulerEstimatorTimeout metav1.Duration
 	// SchedulerEstimatorServicePrefix presents the prefix of the accurate scheduler estimator service name.
 	schedulerEstimatorServicePrefix string
-	// schedulerEstimatorPort is the port that the accurate scheduler estimator server serves at.
-	schedulerEstimatorPort int
 	// schedulerName is the name of the scheduler. Default is "default-scheduler".
 	schedulerName string
 	//enableEmptyWorkloadPropagation represents whether allow workload with replicas 0 propagated to member clusters should be enabled
@@ -134,6 +134,8 @@ type schedulerOptions struct {
 	plugins []string
 	// contains the options for rate limiter.
 	RateLimiterOptions ratelimiterflag.Options
+	// grpcConfig contains the configuration of GRPC.
+	grpcConfig *grpcutil.Config
 }
 
 // Option configures a Scheduler
@@ -143,6 +145,19 @@ type Option func(*schedulerOptions)
 func WithEnableSchedulerEstimator(enableSchedulerEstimator bool) Option {
 	return func(o *schedulerOptions) {
 		o.enableSchedulerEstimator = enableSchedulerEstimator
+	}
+}
+
+// WithGRPC sets the grpc config for scheduler
+func WithGRPC(port int, certFile, keyFile, trustedCAFile string, insecureSkipVerify bool) Option {
+	return func(o *schedulerOptions) {
+		o.grpcConfig = &grpcutil.Config{
+			ServerPort:         port,
+			CertFile:           certFile,
+			KeyFile:            keyFile,
+			TrustedCAFile:      trustedCAFile,
+			InsecureSkipVerify: insecureSkipVerify,
+		}
 	}
 }
 
@@ -164,13 +179,6 @@ func WithSchedulerEstimatorTimeout(schedulerEstimatorTimeout metav1.Duration) Op
 func WithSchedulerEstimatorServicePrefix(schedulerEstimatorServicePrefix string) Option {
 	return func(o *schedulerOptions) {
 		o.schedulerEstimatorServicePrefix = schedulerEstimatorServicePrefix
-	}
-}
-
-// WithSchedulerEstimatorPort sets the schedulerEstimatorPort for scheduler
-func WithSchedulerEstimatorPort(schedulerEstimatorPort int) Option {
-	return func(o *schedulerOptions) {
-		o.schedulerEstimatorPort = schedulerEstimatorPort
 	}
 }
 
@@ -255,7 +263,7 @@ func NewScheduler(dynamicClient dynamic.Interface, karmadaClient karmadaclientse
 		sched.enableSchedulerEstimator = options.enableSchedulerEstimator
 		sched.disableSchedulerEstimatorInPullMode = options.disableSchedulerEstimatorInPullMode
 		sched.schedulerEstimatorServicePrefix = options.schedulerEstimatorServicePrefix
-		sched.schedulerEstimatorPort = options.schedulerEstimatorPort
+		sched.grpcConfig = options.grpcConfig
 		sched.schedulerEstimatorCache = estimatorclient.NewSchedulerEstimatorCache()
 		schedulerEstimatorWorkerOptions := util.Options{
 			Name:          "scheduler-estimator",
@@ -769,7 +777,7 @@ func (s *Scheduler) reconcileEstimatorConnection(key util.QueueKey) error {
 		return nil
 	}
 
-	return estimatorclient.EstablishConnection(s.KubeClient, name, s.schedulerEstimatorCache, s.schedulerEstimatorServicePrefix, s.schedulerEstimatorPort)
+	return estimatorclient.EstablishConnection(s.KubeClient, name, s.schedulerEstimatorCache, s.schedulerEstimatorServicePrefix, s.grpcConfig)
 }
 
 func (s *Scheduler) establishEstimatorConnections() {
@@ -782,7 +790,7 @@ func (s *Scheduler) establishEstimatorConnections() {
 		if clusterList.Items[i].Spec.SyncMode == clusterv1alpha1.Pull && s.disableSchedulerEstimatorInPullMode {
 			continue
 		}
-		if err = estimatorclient.EstablishConnection(s.KubeClient, clusterList.Items[i].Name, s.schedulerEstimatorCache, s.schedulerEstimatorServicePrefix, s.schedulerEstimatorPort); err != nil {
+		if err = estimatorclient.EstablishConnection(s.KubeClient, clusterList.Items[i].Name, s.schedulerEstimatorCache, s.schedulerEstimatorServicePrefix, s.grpcConfig); err != nil {
 			klog.Error(err)
 		}
 	}

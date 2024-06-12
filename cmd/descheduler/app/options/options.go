@@ -62,6 +62,14 @@ type Options struct {
 	SchedulerEstimatorServicePrefix string
 	// SchedulerEstimatorPort is the port that the accurate scheduler estimator server serves at.
 	SchedulerEstimatorPort int
+	// InsecureSkipVerify controls whether verifies the grpc server's certificate chain and host name.
+	InsecureSkipVerify bool
+	// CertFile the certificate used for SSL/TLS connections.
+	CertFile string
+	// KeyFile the key for the certificate.
+	KeyFile string
+	// TrustedCAFile Trusted certificate authority.
+	TrustedCAFile string
 	// DeschedulingInterval specifies time interval for descheduler to run.
 	DeschedulingInterval metav1.Duration
 	// UnschedulableThreshold specifies the period of pod unschedulable condition.
@@ -99,6 +107,10 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.IntVar(&o.KubeAPIBurst, "kube-api-burst", 60, "Burst to use while talking with karmada-apiserver.")
 	fs.DurationVar(&o.SchedulerEstimatorTimeout.Duration, "scheduler-estimator-timeout", 3*time.Second, "Specifies the timeout period of calling the scheduler estimator service.")
 	fs.IntVar(&o.SchedulerEstimatorPort, "scheduler-estimator-port", defaultEstimatorPort, "The secure port on which to connect the accurate scheduler estimator.")
+	fs.StringVar(&o.CertFile, "cert-file", "", "The certificate used for SSL/TLS connections.")
+	fs.StringVar(&o.KeyFile, "key-file", "", "The key for the certificate.")
+	fs.StringVar(&o.TrustedCAFile, "trusted-ca-file", "", "Trusted certificate authority.")
+	fs.BoolVar(&o.InsecureSkipVerify, "insecure-skip-verify", false, "Controls whether verifies the grpc server's certificate chain and host name.")
 	fs.StringVar(&o.SchedulerEstimatorServicePrefix, "scheduler-estimator-service-prefix", "karmada-scheduler-estimator", "The prefix of scheduler estimator service name")
 	fs.DurationVar(&o.DeschedulingInterval.Duration, "descheduling-interval", defaultDeschedulingInterval, "Time interval between two consecutive descheduler executions. Setting this value instructs the descheduler to run in a continuous loop at the interval specified.")
 	fs.DurationVar(&o.UnschedulableThreshold.Duration, "unschedulable-threshold", defaultUnschedulableThreshold, "The period of pod unschedulable condition. This value is considered as a classification standard of unschedulable replicas.")

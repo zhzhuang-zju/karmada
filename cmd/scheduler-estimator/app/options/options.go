@@ -40,6 +40,16 @@ type Options struct {
 	SecurePort int
 	// ServerPort is the port that the server gRPC serves at.
 	ServerPort int
+	// ClientCertAuth when this is set, server will check all incoming HTTPS requests for a client certificate signed by the trusted CA,
+	// requests that don’t supply a valid client certificate will fail. If authentication is enabled,
+	// the certificate provides credentials for the user name given by the Common Name field.
+	ClientCertAuth bool
+	// CertFile the certificate used for SSL/TLS connections.
+	CertFile string
+	// KeyFile the key for the certificate.
+	KeyFile string
+	// TrustedCAFile Trusted certificate authority.
+	TrustedCAFile string
 	// ClusterAPIQPS is the QPS to use while talking with cluster kube-apiserver.
 	ClusterAPIQPS float32
 	// ClusterAPIBurst is the burst to allow while talking with cluster kube-apiserver.
@@ -64,6 +74,10 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&o.ClusterName, "cluster-name", o.ClusterName, "Name of member cluster that the estimator serves for.")
 	fs.StringVar(&o.BindAddress, "bind-address", defaultBindAddress, "The IP address on which to listen for the --secure-port port.")
 	fs.IntVar(&o.ServerPort, "server-port", defaultServerPort, "The secure port on which to serve gRPC.")
+	fs.StringVar(&o.CertFile, "cert-file", "", "The certificate used for SSL/TLS connections.")
+	fs.StringVar(&o.KeyFile, "key-file", "", "The key for the certificate.")
+	fs.BoolVar(&o.ClientCertAuth, "client-cert-auth", false, "When this is set, server will check all incoming HTTPS requests for a client certificate signed by the trusted CA, requests that don’t supply a valid client certificate will fail. If authentication is enabled, the certificate provides credentials for the user name given by the Common Name field.")
+	fs.StringVar(&o.TrustedCAFile, "trusted-ca-file", "", "Trusted certificate authority.")
 	fs.IntVar(&o.SecurePort, "secure-port", defaultHealthzPort, "The secure port on which to serve HTTPS.")
 	fs.Float32Var(&o.ClusterAPIQPS, "kube-api-qps", 20.0, "QPS to use while talking with apiserver.")
 	fs.IntVar(&o.ClusterAPIBurst, "kube-api-burst", 30, "Burst to use while talking with apiserver.")

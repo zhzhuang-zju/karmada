@@ -71,6 +71,14 @@ type Options struct {
 	SchedulerEstimatorServicePrefix string
 	// SchedulerEstimatorPort is the port that the accurate scheduler estimator server serves at.
 	SchedulerEstimatorPort int
+	// InsecureSkipVerify controls whether verifies the grpc server's certificate chain and host name.
+	InsecureSkipVerify bool
+	// CertFile the certificate used for SSL/TLS connections.
+	CertFile string
+	// KeyFile the key for the certificate.
+	KeyFile string
+	// TrustedCAFile Trusted certificate authority.
+	TrustedCAFile string
 
 	// EnableEmptyWorkloadPropagation represents whether workload with 0 replicas could be propagated to member clusters.
 	EnableEmptyWorkloadPropagation bool
@@ -138,6 +146,10 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.DurationVar(&o.SchedulerEstimatorTimeout.Duration, "scheduler-estimator-timeout", 3*time.Second, "Specifies the timeout period of calling the scheduler estimator service.")
 	fs.StringVar(&o.SchedulerEstimatorServicePrefix, "scheduler-estimator-service-prefix", "karmada-scheduler-estimator", "The prefix of scheduler estimator service name")
 	fs.IntVar(&o.SchedulerEstimatorPort, "scheduler-estimator-port", defaultEstimatorPort, "The secure port on which to connect the accurate scheduler estimator.")
+	fs.StringVar(&o.CertFile, "cert-file", "", "The certificate used for SSL/TLS connections.")
+	fs.StringVar(&o.KeyFile, "key-file", "", "The key for the certificate.")
+	fs.StringVar(&o.TrustedCAFile, "trusted-ca-file", "", "Trusted certificate authority.")
+	fs.BoolVar(&o.InsecureSkipVerify, "insecure-skip-verify", false, "Controls whether verifies the grpc server's certificate chain and host name.")
 	fs.BoolVar(&o.EnableEmptyWorkloadPropagation, "enable-empty-workload-propagation", false, "Enable workload with replicas 0 to be propagated to member clusters.")
 	fs.StringSliceVar(&o.Plugins, "plugins", []string{"*"},
 		fmt.Sprintf("A list of plugins to enable. '*' enables all build-in and customized plugins, 'foo' enables the plugin named 'foo', '*,-foo' disables the plugin named 'foo'.\nAll build-in plugins: %s.", strings.Join(frameworkplugins.NewInTreeRegistry().FactoryNames(), ",")))
