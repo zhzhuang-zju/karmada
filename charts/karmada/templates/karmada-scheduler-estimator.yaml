@@ -48,6 +48,10 @@ spec:
             - /bin/karmada-scheduler-estimator
             - --kubeconfig=/etc/{{ $clusterName }}-kubeconfig
             - --cluster-name={{ $clusterName }}
+            - --cert-file=/etc/karmada/pki/karmada.crt
+            - --key-file=/etc/karmada/pki/karmada.key
+            - --client-cert-auth=true
+            - --trusted-ca-file=/etc/karmada/pki/ca.crt
             {{- with (include "karmada.schedulerEstimator.featureGates" (dict "featureGatesArg" $.Values.schedulerEstimator.featureGates)) }}
             - {{ . }}
             {{- end}}
@@ -61,12 +65,16 @@ spec:
             periodSeconds: 15
             timeoutSeconds: 5
           volumeMounts:
+            - name: karmada-certs
+              mountPath: /etc/karmada/pki
+              readOnly: true
             - name: member-kubeconfig
               subPath: {{ $clusterName }}-kubeconfig
               mountPath: /etc/{{ $clusterName }}-kubeconfig
           resources:
           {{- toYaml $.Values.schedulerEstimator.resources | nindent 12 }}
       volumes:
+      {{- include "karmada.scheduler.cert.volume" $ | nindent 8 }}
         - name: member-kubeconfig
           secret:
             secretName: {{ $clusterName }}-kubeconfig
