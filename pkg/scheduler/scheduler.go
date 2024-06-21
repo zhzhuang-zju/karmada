@@ -108,7 +108,7 @@ type Scheduler struct {
 	schedulerEstimatorCache             *estimatorclient.SchedulerEstimatorCache
 	schedulerEstimatorServicePrefix     string
 	schedulerEstimatorWorker            util.AsyncWorker
-	schedulerEstimatorClientConfig      *grpcconnection.Config
+	schedulerEstimatorClientConfig      *grpcconnection.ClientConfig
 	schedulerName                       string
 
 	enableEmptyWorkloadPropagation bool
@@ -133,8 +133,8 @@ type schedulerOptions struct {
 	plugins []string
 	// contains the options for rate limiter.
 	RateLimiterOptions ratelimiterflag.Options
-	// grpcConfig contains the configuration of GRPC.
-	grpcConfig *grpcconnection.Config
+	// schedulerEstimatorClientConfig contains the configuration of GRPC.
+	schedulerEstimatorClientConfig *grpcconnection.ClientConfig
 }
 
 // Option configures a Scheduler
@@ -150,14 +150,12 @@ func WithEnableSchedulerEstimator(enableSchedulerEstimator bool) Option {
 // WithSchedulerEstimatorConnection sets the grpc config for scheduler
 func WithSchedulerEstimatorConnection(port int, certFile, keyFile, trustedCAFile string, insecureSkipVerify bool) Option {
 	return func(o *schedulerOptions) {
-		o.grpcConfig = &grpcconnection.Config{
-			ClientConfig: &grpcconnection.ClientConfig{
-				CertFile:                 certFile,
-				KeyFile:                  keyFile,
-				ServerAuthCAFile:         trustedCAFile,
-				InsecureSkipServerVerify: insecureSkipVerify,
-			},
-			ServerPort: port,
+		o.schedulerEstimatorClientConfig = &grpcconnection.ClientConfig{
+			CertFile:                 certFile,
+			KeyFile:                  keyFile,
+			ServerAuthCAFile:         trustedCAFile,
+			InsecureSkipServerVerify: insecureSkipVerify,
+			TargetPort:               port,
 		}
 	}
 }
@@ -264,7 +262,7 @@ func NewScheduler(dynamicClient dynamic.Interface, karmadaClient karmadaclientse
 		sched.enableSchedulerEstimator = options.enableSchedulerEstimator
 		sched.disableSchedulerEstimatorInPullMode = options.disableSchedulerEstimatorInPullMode
 		sched.schedulerEstimatorServicePrefix = options.schedulerEstimatorServicePrefix
-		sched.schedulerEstimatorClientConfig = options.grpcConfig
+		sched.schedulerEstimatorClientConfig = options.schedulerEstimatorClientConfig
 		sched.schedulerEstimatorCache = estimatorclient.NewSchedulerEstimatorCache()
 		schedulerEstimatorWorkerOptions := util.Options{
 			Name:          "scheduler-estimator",

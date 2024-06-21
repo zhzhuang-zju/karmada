@@ -29,16 +29,10 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-// Config the config of GRPC connection.
-type Config struct {
-	// The secure port on which to serve gRPC.
-	ServerPort int
-	*ServerConfig
-	*ClientConfig
-}
-
 // ServerConfig the config of GRPC server side.
 type ServerConfig struct {
+	// ServerPort The secure port on which to serve gRPC.
+	ServerPort int
 	// InsecureSkipClientVerify Controls whether verifies the client's certificate chain and host name.
 	// When this is set to false, server will check all incoming HTTPS requests for a client certificate signed by the trusted CA,
 	// requests that don’t supply a valid client certificate will fail. If authentication is enabled,
@@ -54,6 +48,8 @@ type ServerConfig struct {
 
 // ClientConfig the config of GRPC client side.
 type ClientConfig struct {
+	// TargetPort the target port on which to establish a gRPC connection.
+	TargetPort int
 	// InsecureSkipServerVerify controls whether a client verifies the server's
 	// certificate chain and host name. If InsecureSkipServerVerify is true, crypto/tls
 	// accepts any certificate presented by the server and any host name in that

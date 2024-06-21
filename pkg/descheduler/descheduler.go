@@ -66,7 +66,7 @@ type Descheduler struct {
 
 	schedulerEstimatorCache         *estimatorclient.SchedulerEstimatorCache
 	schedulerEstimatorServicePrefix string
-	schedulerEstimatorClientConfig  *grpcconnection.Config
+	schedulerEstimatorClientConfig  *grpcconnection.ClientConfig
 	schedulerEstimatorWorker        util.AsyncWorker
 
 	unschedulableThreshold time.Duration
@@ -86,14 +86,12 @@ func NewDescheduler(karmadaClient karmadaclientset.Interface, kubeClient kuberne
 		clusterInformer:         factory.Cluster().V1alpha1().Clusters().Informer(),
 		clusterLister:           factory.Cluster().V1alpha1().Clusters().Lister(),
 		schedulerEstimatorCache: estimatorclient.NewSchedulerEstimatorCache(),
-		schedulerEstimatorClientConfig: &grpcconnection.Config{
-			ServerPort: opts.SchedulerEstimatorPort,
-			ClientConfig: &grpcconnection.ClientConfig{
-				InsecureSkipServerVerify: opts.InsecureSkipEstimatorVerify,
-				ServerAuthCAFile:         opts.SchedulerEstimatorCaFile,
-				CertFile:                 opts.SchedulerEstimatorCertFile,
-				KeyFile:                  opts.SchedulerEstimatorKeyFile,
-			},
+		schedulerEstimatorClientConfig: &grpcconnection.ClientConfig{
+			InsecureSkipServerVerify: opts.InsecureSkipEstimatorVerify,
+			ServerAuthCAFile:         opts.SchedulerEstimatorCaFile,
+			CertFile:                 opts.SchedulerEstimatorCertFile,
+			KeyFile:                  opts.SchedulerEstimatorKeyFile,
+			TargetPort:               opts.SchedulerEstimatorPort,
 		},
 		schedulerEstimatorServicePrefix: opts.SchedulerEstimatorServicePrefix,
 		unschedulableThreshold:          opts.UnschedulableThreshold.Duration,

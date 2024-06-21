@@ -85,7 +85,7 @@ type AccurateSchedulerEstimatorServer struct {
 
 	Cache schedcache.Cache
 
-	GrpcConfig *grpcconnection.Config
+	GrpcConfig *grpcconnection.ServerConfig
 }
 
 // NewEstimatorServer creates an instance of AccurateSchedulerEstimatorServer.
@@ -113,14 +113,12 @@ func NewEstimatorServer(
 		},
 		parallelizer: parallelize.NewParallelizer(opts.Parallelism),
 		Cache:        schedcache.New(durationToExpireAssumedPod, stopChan),
-		GrpcConfig: &grpcconnection.Config{
-			ServerConfig: &grpcconnection.ServerConfig{
-				InsecureSkipClientVerify: opts.InsecureSkipGrpcClientVerify,
-				ClientAuthCAFile:         opts.GrpcClientCaFile,
-				CertFile:                 opts.GrpcAuthCertFile,
-				KeyFile:                  opts.GrpcAuthKeyFile,
-			},
-			ServerPort: opts.ServerPort,
+		GrpcConfig: &grpcconnection.ServerConfig{
+			InsecureSkipClientVerify: opts.InsecureSkipGrpcClientVerify,
+			ClientAuthCAFile:         opts.GrpcClientCaFile,
+			CertFile:                 opts.GrpcAuthCertFile,
+			KeyFile:                  opts.GrpcAuthKeyFile,
+			ServerPort:               opts.ServerPort,
 		},
 	}
 	// ignore the error here because the informers haven't been started
