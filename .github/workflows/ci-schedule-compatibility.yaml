@@ -3,12 +3,17 @@ on:
   schedule:
     # Run this workflow "At 20:00 UTC on Sunday and Saturday"
     - cron: '0 20 * * 0,6'
+  push:
+
+permissions:
+  actions: write # Used by nick-fields/retry@v3.0.0 to retry job steps if needed.
+  contents: read # Required by actions/checkout@v4 to fetch the repository contents.
 
 jobs:
   e2e:
     name: e2e test
     # prevent job running from forked repository
-    if: ${{ github.repository == 'karmada-io/karmada' }}
+    # if: ${{ github.repository == 'karmada-io/karmada' }}
     runs-on: ubuntu-22.04
     strategy:
       # max-parallel limits the max number of jobs running at the same time.
