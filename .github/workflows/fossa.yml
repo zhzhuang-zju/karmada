@@ -1,6 +1,6 @@
 name: FOSSA
 on:
-  push:
+  pull_request:
     # Exclude branches created by Dependabot to avoid triggering current workflow
     # for PRs initiated by Dependabot.
     branches-ignore:
