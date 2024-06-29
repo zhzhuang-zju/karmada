@@ -2,20 +2,20 @@ name: SBOM
 on:
   push:
 jobs:
-  sbom:
-    name: sbom
+  sbom-assests:
+    name: Release sbom
     runs-on: ubuntu-22.04
     steps:
-      - name: checkout code
-        uses: actions/checkout@v4
-      - name: generator sbom
+      - uses: actions/checkout@v4
+      - name: Generate sbom for karmada file system
         uses: aquasecurity/trivy-action@0.23.0
         with:
           scan-type: 'fs'
           format: 'spdx'
-          output: 'trivy-sbom.spdx'
-          scan-ref: "/github/workspace/karmada/"
-      - name: display
+          output: '/tmp/trivy-sbom.spdx'
+          scan-ref: "/github/workspace/"
+      - name: Tar the sbom files
         run: |
-          pwd
-          cat trivy-sbom.spdx
+          cat /tmp/trivy-sbom.spdx
+          cd /tmp && tar -zcf sbom.tar.gz *.spdx
+          ll |grep sbom.tar.gz
