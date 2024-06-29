@@ -14,7 +14,8 @@ jobs:
           scan-type: 'fs'
           format: 'spdx'
           output: 'trivy-sbom.spdx'
-          scan-ref: "https://github.com/zhzhuang-zju/karmada"
+          scan-ref: "github/workspace"
       - name: display
         run: |
+          pwd
           cat trivy-sbom.spdx
