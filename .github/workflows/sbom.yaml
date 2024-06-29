@@ -14,7 +14,6 @@ jobs:
           format: 'spdx'
           output: 'sbom-karmada.spdx'
           scan-ref: "/github/workspace/"
-      - name: Tar the sbom files
+      - name: Display the sbom
         run: |
           cat sbom-karmada.spdx
-          tar -zcf sbom.tar.gz *.spdx
