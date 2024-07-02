@@ -1,6 +1,6 @@
 name: SBOM
 on:
-  push:
+  pull_request:
 jobs:
   sbom-assests:
     name: Release sbom

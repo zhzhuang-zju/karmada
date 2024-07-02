@@ -1,10 +1,13 @@
 name: CI Workflow
 on:
+  push:
   pull_request:
 # https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#concurrency
 concurrency:
   group: ${{ github.workflow }}-${{ github.actor }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
+permissions:
+  contents: read
 jobs:
   golangci:
     name: lint
@@ -86,7 +89,7 @@ jobs:
       - name: Upload coverage to Codecov
         # Prevent running from the forked repository that doesn't need to upload coverage.
         # In addition, running on the forked repository would fail as missing the necessary secret.
-        if: ${{ github.repository == 'karmada-io/karmada' }}
+        # if: ${{ github.repository == 'karmada-io/karmada' }}
         uses: codecov/codecov-action@v4
         with:
           # Even though token upload token is not required for public repos,
