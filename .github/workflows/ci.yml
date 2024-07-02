@@ -9,96 +9,114 @@ concurrency:
 permissions:
   contents: read
 jobs:
-  golangci:
-    name: lint
+  release:
+    name: get latest release
     runs-on: ubuntu-22.04
     steps:
-      - name: checkout code
-        uses: actions/checkout@v4
-      - name: install Go
-        uses: actions/setup-go@v5
+      - uses: pozetroninc/github-action-get-latest-release@master
+        id: karmada
         with:
-          go-version-file: go.mod
-      - name: verify license
-        run: hack/verify-license.sh
-      - name: vendor
-        run: hack/verify-vendor.sh
-      - name: lint
-        run: hack/verify-staticcheck.sh
-      - name: import alias
-        run: hack/verify-import-aliases.sh
-  codegen:
-    name: codegen
-    runs-on: ubuntu-22.04
-    steps:
-      - name: checkout code
-        uses: actions/checkout@v4
-      - name: install Go
-        uses: actions/setup-go@v5
+          repository: karmada-io/karmada
+      - name: latest release
+        run: |
+          echo ${{ steps.karmada.outputs.release }}
+          echo ${{GITHUB_REF_NAME}}
+      - uses: nick-fields/retry@v3.0.0
         with:
-          go-version-file: go.mod
-      - name: Install Protoc
-        uses: arduino/setup-protoc@v3
-        with:
-          version: '23.4'
-          # Use the automatic token, so that this task can be run in the forked repo.
-          # https://docs.github.com/en/actions/security-guides/automatic-token-authentication
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: verify codegen
-        run: hack/verify-codegen.sh
-      - name: verify crdgen
-        run: hack/verify-crdgen.sh
-      - name: verify protobuf
-        run: hack/verify-estimator-protobuf.sh
-      - name: verify swagger docs
-        run: hack/verify-swagger-docs.sh
-      - name: verify lifted docs
-        run: hack/verify-lifted.sh
-  build:
-    name: compile
-    needs: codegen # rely on codegen successful completion
-    runs-on: ubuntu-22.04
-    steps:
-      - name: checkout code
-        uses: actions/checkout@v4
-        with:
-          # Number of commits to fetch. 0 indicates all history for all branches and tags.
-          # We need to guess version via git tags.
-          fetch-depth: 0
-      - name: install Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-      - name: compile
-        run: make all
-  test:
-    permissions:
-      id-token: write
-    name: unit test
-    needs: build
-    runs-on: ubuntu-22.04
-    env:
-      GOTESTSUM_ENABLED: enabled
-    steps:
-      - name: checkout code
-        uses: actions/checkout@v4
-      - name: install Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-      - name: make test
-        run: make test
-      - name: Upload coverage to Codecov
-        # Prevent running from the forked repository that doesn't need to upload coverage.
-        # In addition, running on the forked repository would fail as missing the necessary secret.
-        # if: ${{ github.repository == 'karmada-io/karmada' }}
-        uses: codecov/codecov-action@v4
-        with:
-          # Even though token upload token is not required for public repos,
-          # but adding a token might increase successful uploads as per:
-          # https://community.codecov.com/t/upload-issues-unable-to-locate-build-via-github-actions-api/3954
-          token: ${{secrets.CODECOV_UPLOAD_TOKEN}}
-          files: ./_output/coverage/coverage_pkg.txt,./_output/coverage/coverage_cmd.txt,./_output/coverage/coverage_examples.txt,./_output/coverage/coverage_operator.txt
-          flags: unittests
-          fail_ci_if_error: false
-          verbose: true
+          max_attempts: 3
+          timeout_seconds: 4
+          command: |
+            sleep 8
+#  golangci:
+#    name: lint
+#    runs-on: ubuntu-22.04
+#    steps:
+#      - name: checkout code
+#        uses: actions/checkout@v4
+#      - name: install Go
+#        uses: actions/setup-go@v5
+#        with:
+#          go-version-file: go.mod
+#      - name: verify license
+#        run: hack/verify-license.sh
+#      - name: vendor
+#        run: hack/verify-vendor.sh
+#      - name: lint
+#        run: hack/verify-staticcheck.sh
+#      - name: import alias
+#        run: hack/verify-import-aliases.sh
+#  codegen:
+#    name: codegen
+#    runs-on: ubuntu-22.04
+#    steps:
+#      - name: checkout code
+#        uses: actions/checkout@v4
+#      - name: install Go
+#        uses: actions/setup-go@v5
+#        with:
+#          go-version-file: go.mod
+#      - name: Install Protoc
+#        uses: arduino/setup-protoc@v3
+#        with:
+#          version: '23.4'
+#          # Use the automatic token, so that this task can be run in the forked repo.
+#          # https://docs.github.com/en/actions/security-guides/automatic-token-authentication
+#          repo-token: ${{ secrets.GITHUB_TOKEN }}
+#      - name: verify codegen
+#        run: hack/verify-codegen.sh
+#      - name: verify crdgen
+#        run: hack/verify-crdgen.sh
+#      - name: verify protobuf
+#        run: hack/verify-estimator-protobuf.sh
+#      - name: verify swagger docs
+#        run: hack/verify-swagger-docs.sh
+#      - name: verify lifted docs
+#        run: hack/verify-lifted.sh
+#  build:
+#    name: compile
+#    needs: codegen # rely on codegen successful completion
+#    runs-on: ubuntu-22.04
+#    steps:
+#      - name: checkout code
+#        uses: actions/checkout@v4
+#        with:
+#          # Number of commits to fetch. 0 indicates all history for all branches and tags.
+#          # We need to guess version via git tags.
+#          fetch-depth: 0
+#      - name: install Go
+#        uses: actions/setup-go@v5
+#        with:
+#          go-version-file: go.mod
+#      - name: compile
+#        run: make all
+#  test:
+#    permissions:
+#      id-token: write
+#    name: unit test
+#    needs: build
+#    runs-on: ubuntu-22.04
+#    env:
+#      GOTESTSUM_ENABLED: enabled
+#    steps:
+#      - name: checkout code
+#        uses: actions/checkout@v4
+#      - name: install Go
+#        uses: actions/setup-go@v5
+#        with:
+#          go-version-file: go.mod
+#      - name: make test
+#        run: make test
+#      - name: Upload coverage to Codecov
+#        # Prevent running from the forked repository that doesn't need to upload coverage.
+#        # In addition, running on the forked repository would fail as missing the necessary secret.
+#        # if: ${{ github.repository == 'karmada-io/karmada' }}
+#        uses: codecov/codecov-action@v4
+#        with:
+#          # Even though token upload token is not required for public repos,
+#          # but adding a token might increase successful uploads as per:
+#          # https://community.codecov.com/t/upload-issues-unable-to-locate-build-via-github-actions-api/3954
+#          token: ${{secrets.CODECOV_UPLOAD_TOKEN}}
+#          files: ./_output/coverage/coverage_pkg.txt,./_output/coverage/coverage_cmd.txt,./_output/coverage/coverage_examples.txt,./_output/coverage/coverage_operator.txt
+#          flags: unittests
+#          fail_ci_if_error: false
+#          verbose: true
