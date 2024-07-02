@@ -1,13 +1,16 @@
 name: FOSSA
 on:
+  push:
   pull_request:
+permissions:  
+  contents: read
 jobs:
   fossa:
     name: FOSSA
     # prevent job running from forked repository, otherwise
     # 1. running on the forked repository would fail as missing necessary secret.
     # 2. running on the forked repository would use unnecessary GitHub Action time.
-    if: ${{ github.repository == 'karmada-io/karmada' }}
+    # if: ${{ github.repository == 'karmada-io/karmada' }}
     runs-on: ubuntu-22.04
     steps:
       - name: checkout code
