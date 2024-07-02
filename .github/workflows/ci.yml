@@ -20,7 +20,7 @@ jobs:
       - name: latest release
         run: |
           echo ${{ steps.karmada.outputs.release }}
-          echo ${{GITHUB_REF_NAME}}
+          echo ${{ github.ref.name }}
       - uses: nick-fields/retry@v3.0.0
         with:
           max_attempts: 3
