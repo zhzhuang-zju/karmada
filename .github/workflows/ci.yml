@@ -73,7 +73,7 @@ jobs:
         run: make all
   test:
     permissions:
-      id-token: read
+      id-token: write
     name: unit test
     needs: build
     runs-on: ubuntu-22.04
