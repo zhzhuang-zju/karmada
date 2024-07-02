@@ -11,7 +11,8 @@ on:
   pull_request:
     paths:
       - "charts/**"
-
+permissions:  # added using https://github.com/step-security/secure-repo
+  contents: read
 jobs:
   chart-lint-test:
     runs-on: ubuntu-22.04
