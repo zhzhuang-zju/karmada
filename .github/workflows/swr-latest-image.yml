@@ -1,8 +1,5 @@
 name: latest image to SWR
 on:
-  push:
-    branches:
-      - master
 jobs:
   publish-image:
     name: publish images
