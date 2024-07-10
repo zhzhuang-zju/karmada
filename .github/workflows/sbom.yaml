@@ -44,4 +44,81 @@ jobs:
     with:
       base64-subjects: "${{ needs.sbom-assests.outputs.hashes }}"
       provenance-name: "karmada-sbom.intoto.jsonl"
+  release-assests:
+    name: release kubectl-karmada
+    runs-on: ubuntu-22.04
+    outputs:
+      hashes: ${{ steps.hash.outputs.hashes }}
+    strategy:
+      matrix:
+        target:
+          - karmadactl
+          - kubectl-karmada
+        os:
+          - linux
+          - darwin
+        arch:
+          - amd64
+          - arm64
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Making and packaging
+        env:
+          GOOS: ${{ matrix.os }}
+          GOARCH: ${{ matrix.arch }}
+        run: make release-${{ matrix.target }}
+      - name: Making helm charts
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: make package-chart
+      - name: Generate subject for provenance
+        id: hash
+        run: |
+          set -euo pipefail
+          
+          files=_output/release/*.tgz.sha256
+
+          # 初始化一个空字符串来保存组合后的哈希值
+          combined_hashes=""
+          
+          for file in "${files[@]}"; do
+            # 读取并格式化每个文件的SHA-256校验和
+            hash_line=$(cat "$file")
+            # 去掉前缀（如果有的话）
+            clean_hash=$(echo "$hash_line" | sed 's/sha256://')
+            # 添加到组合字符串中，注意这里的换行符
+            combined_hashes+="$clean_hash\n"
+          done
+          
+          # 移除最后一个换行符
+          combined_hashes=${combined_hashes%$'\n'}
+          
+          # Base64编码
+          base64_encoded_hashes=$(echo -n "$combined_hashes" | base64)
+          
+          # 输出最终的Base64编码后的哈希值字符串
+          echo "hashes=$base64_encoded_hashes" >> $GITHUB_OUTPUT
+      - name: upload
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cli
+          path: _output/release
+
+  release-provenance:
+    needs: [release-assests]
+    permissions:
+      actions: read # for detecting the Github Actions environment
+      id-token: write # Needed for provenance signing and ID
+      contents: write #  Needed for release uploads
+    # Must be refernced by a tag. https://github.com/slsa-framework/slsa-github-generator/blob/main/internal/builders/container/README.md#referencing-the-slsa-generator
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.0.0
+    with:
+      base64-subjects: "${{ needs.release-assests.outputs.hashes }}"
+      provenance-name: "karmada-cli.intoto.jsonl"
+      
 
