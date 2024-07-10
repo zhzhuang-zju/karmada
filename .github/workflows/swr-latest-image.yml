@@ -1,5 +1,6 @@
 name: latest image to SWR
 on:
+  pull_request:
 jobs:
   publish-image:
     name: publish images

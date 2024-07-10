@@ -16,9 +16,9 @@ jobs:
           format: 'spdx'
           output: 'sbom-karmada.spdx'
           scan-ref: "/github/workspace/"
-      - name: Display the sbom
+      - name: tar the sbom
         run: |
-          cat sbom-karmada.spdx
+          tar -zcf sbom.tar.gz *.spdx
       - name: Generate SBOM hash
         shell: bash
         id: sbom-hash
@@ -26,7 +26,13 @@ jobs:
           # sha256sum generates sha256 hash for sbom.
           # base64 -w0 encodes to base64 and outputs on a single line.
           # sha256sum /tmp/sbom.tar.gz ... | base64 -w0
-          echo "hashes=$(sha256sum /tmp/sbom.tar.gz | base64 -w0)" >> "$GITHUB_OUTPUT"
+          echo "hashes=$(sha256sum sbom.tar.gz | base64 -w0)" >> "$GITHUB_OUTPUT"
+      - name: upload
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom.tar.gz
+          path: sbom.tar.gz
   sbom-provenance:
     needs: [sbom-assests]
     permissions:
