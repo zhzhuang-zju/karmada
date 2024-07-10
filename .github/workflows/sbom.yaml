@@ -71,10 +71,6 @@ jobs:
           GOOS: ${{ matrix.os }}
           GOARCH: ${{ matrix.arch }}
         run: make release-${{ matrix.target }}
-      - name: Making helm charts
-        env:
-          VERSION: ${{ github.ref_name }}
-        run: make package-chart
       - name: Generate subject for provenance
         id: hash
         run: |
@@ -107,7 +103,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: cli
-          path: _output/release
+          path: _output/release/${{ matrix.target }}-${{ matrix.os }}-${{ matrix.arch }}.tgz
 
   release-provenance:
     needs: [release-assests]
