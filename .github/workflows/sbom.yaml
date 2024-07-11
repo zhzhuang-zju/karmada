@@ -154,6 +154,13 @@ jobs:
           combined_hashes=${combined_hashes%$'\n'}
           base64_encoded_hashes=$(echo -n "$combined_hashes" | base64 -w0)
           echo "hashes=$base64_encoded_hashes" >> "$GITHUB_OUTPUT"
+      - name: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: charts
+          path: |
+            _output/charts/karmada-chart-${{ github.ref_name }}.tgz
+            _output/charts/karmada-operator-chart-${{ github.ref_name }}.tgz
 #      - name: Uploading assets...
 #        if: ${{ !env.ACT }}
 #        uses: softprops/action-gh-release@v2
@@ -218,11 +225,11 @@ jobs:
       base64-subjects: "${{ needs.sbom-assests.outputs.hashes }}"
       provenance-name: "karmada-sbom.intoto.jsonl"
 #      upload-assets: true
-  update-krew-index:
-    needs: release-assests
-    name: Update krew-index
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v4
-      - name: Update new version in krew-index
-        uses: rajatjindal/krew-release-bot@v0.0.46
+#  update-krew-index:
+#    needs: release-assests
+#    name: Update krew-index
+#    runs-on: ubuntu-22.04
+#    steps:
+#      - uses: actions/checkout@v4
+#      - name: Update new version in krew-index
+#        uses: rajatjindal/krew-release-bot@v0.0.46
