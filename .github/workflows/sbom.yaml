@@ -159,8 +159,8 @@ jobs:
         with:
           name: charts
           path: |
-            _output/charts/karmada-chart-${{ github.ref_name }}.tgz
-            _output/charts/karmada-operator-chart-${{ github.ref_name }}.tgz
+            _output/charts/karmada-chart-v1.10.0.tgz
+            _output/charts/karmada-operator-chart-v1.10.0.tgz
 #      - name: Uploading assets...
 #        if: ${{ !env.ACT }}
 #        uses: softprops/action-gh-release@v2
