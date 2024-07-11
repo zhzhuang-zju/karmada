@@ -112,36 +112,9 @@ jobs:
           done
           
           combined_hashes=${combined_hashes%$'\n'}
-          base64_encoded_hashes=$(echo -n "$combined_hashes" | base64)
+          base64_encoded_hashes=$(echo -n "$combined_hashes" | base64 -w0)
           echo $base64_encoded_hashes
           echo "hashes=$base64_encoded_hashes" >> "$GITHUB_OUTPUT"
-
-#    id: hash
-#    run: |
-#      set -euo pipefail
-#
-#      files=$(find _output/release -name *.tgz.sha256)
-#
-#      # 初始化一个空字符串来保存组合后的哈希值
-#      combined_hashes=""
-#
-#      for file in "${files[@]}"; do
-#        # 读取并格式化每个文件的SHA-256校验和
-#        hash_line=$(cat "$file")
-#        # 去掉前缀（如果有的话）
-#        clean_hash=$(echo "$hash_line" | sed 's/sha256://')
-#        # 添加到组合字符串中，注意这里的换行符
-#        combined_hashes+="$clean_hash\n"
-#      done
-#
-#      # 移除最后一个换行符
-#      combined_hashes=${combined_hashes%$'\n'}
-#
-#      # Base64编码
-#      base64_encoded_hashes=$(echo -n "$combined_hashes" | base64)
-#
-#      # 输出最终的Base64编码后的哈希值字符串
-#      echo "hashes=$base64_encoded_hashes" >> $GITHUB_OUTPUT
   release-provenance:
     needs: [Generate-subject-for-provenance]
     permissions:
@@ -153,5 +126,4 @@ jobs:
     with:
       base64-subjects: "${{ needs.Generate-subject-for-provenance.outputs.hashes }}"
       provenance-name: "karmada-cli.intoto.jsonl"
-      
 
