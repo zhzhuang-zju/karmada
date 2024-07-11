@@ -113,7 +113,8 @@ jobs:
           
           combined_hashes=${combined_hashes%$'\n'}
           base64_encoded_hashes=$(echo -n "$combined_hashes" | base64)
-          echo "hashes=$base64_encoded_hashes" >> $GITHUB_OUTPUT
+          echo $base64_encoded_hashes
+          echo "hashes=$base64_encoded_hashes" >> "$GITHUB_OUTPUT"
 
 #    id: hash
 #    run: |
