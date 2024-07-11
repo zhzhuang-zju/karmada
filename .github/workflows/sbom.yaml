@@ -34,8 +34,8 @@ jobs:
       - name: upload sha256 hash
         uses: actions/upload-artifact@v4
         with:
-          name: sha256-${{ matrix.target }}-${{ matrix.os }}-${{ matrix.arch }}.tgz.sha256
-          path: _output/release/${{ matrix.target }}-${{ matrix.os }}-${{ matrix.arch }}.tgz.sha256
+          name: cli-${{ matrix.target }}-${{ matrix.os }}-${{ matrix.arch }}.tgz
+          path: _output/release/${{ matrix.target }}-${{ matrix.os }}-${{ matrix.arch }}.tgz
 #      - name: Uploading assets...
 #        if: ${{ !env.ACT }}
 #        uses: softprops/action-gh-release@v2
@@ -53,24 +53,15 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: _output/release
-          pattern: sha256-*
+          pattern: cli-*
           merge-multiple: true
       - name: generate cli hash
         id: hash
         run: |
-          set -euo pipefail
-          
-          combined_hashes=""
-          for file in _output/release/*.tgz.sha256; do
-            if [ -f "$file" ]; then
-              hash_line=$(cat "$file")
-              clean_hash=$(echo "$hash_line" | sed 's/sha256://')
-              combined_hashes+="$clean_hash\n"              
-            fi
-          done
-          combined_hashes=${combined_hashes%$'\n'}
-          base64_encoded_hashes=$(echo -n "$combined_hashes" | base64 -w0)
-          echo "hashes=$base64_encoded_hashes" >> "$GITHUB_OUTPUT"
+          cd _output/release
+          # sha256sum generates sha256 hash for cli.
+          # base64 -w0 encodes to base64 and outputs on a single line.
+          echo "hashes=$(sha256sum *.tgz|base64 -w0)" >> "$GITHUB_OUTPUT"
   cli-provenance:
     needs: [generate-subject-for-cli-provenance]
     permissions:
@@ -142,7 +133,7 @@ jobs:
         id: hash
         run: |
           cd _output/charts
-          echo "hashes=$(sha256sum karmada-chart-v1.10.0.tgz karmada-operator-chart-v1.10.0.tgz | base64 -w0)" >> "$GITHUB_OUTPUT"
+          echo "hashes=$(sha256sum *.tgz|base64 -w0)" >> "$GITHUB_OUTPUT"
       - name: upload
         uses: actions/upload-artifact@v4
         with:
