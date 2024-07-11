@@ -141,19 +141,8 @@ jobs:
       - name: generate charts hash
         id: hash
         run: |
-          set -euo pipefail
-          
-          combined_hashes=""
-          for file in _output/charts/*.tgz.sha256; do
-            if [ -f "$file" ]; then
-              hash_line=$(cat "$file")
-              clean_hash=$(echo "$hash_line" | sed 's/sha256://')
-              combined_hashes+="$clean_hash\n"              
-            fi
-          done
-          combined_hashes=${combined_hashes%$'\n'}
-          base64_encoded_hashes=$(echo -n "$combined_hashes" | base64 -w0)
-          echo "hashes=$base64_encoded_hashes" >> "$GITHUB_OUTPUT"
+          cd _output/charts
+          echo "hashes=$(sha256sum karmada-chart-v1.10.0.tgz karmada-operator-chart-v1.10.0.tgz | base64 -w0)" >> "$GITHUB_OUTPUT"
       - name: upload
         uses: actions/upload-artifact@v4
         with:
