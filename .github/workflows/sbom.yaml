@@ -103,10 +103,12 @@ jobs:
           
           combined_hashes=""
           
-          for file in $(ls "_output/release"); do
-            hash_line=$(cat "$file")
-            clean_hash=$(echo "$hash_line" | sed 's/sha256://')
-            combined_hashes+="$clean_hash\n"
+          for file in _output/release/*.tgz.sha256; do
+            if [ -f "$file" ]; then
+              hash_line=$(cat "$file")
+              clean_hash=$(echo "$hash_line" | sed 's/sha256://')
+              combined_hashes+="$clean_hash\n"              
+            fi
           done
           
           combined_hashes=${combined_hashes%$'\n'}
