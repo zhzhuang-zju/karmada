@@ -72,10 +72,14 @@ jobs:
           GOARCH: ${{ matrix.arch }}
         run: make release-${{ matrix.target }}
       - name: upload
-        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: sha256-${{ matrix.target }}-${{ matrix.os }}-${{ matrix.arch }}.tgz.sha256
+          path: _output/release/${{ matrix.target }}-${{ matrix.os }}-${{ matrix.arch }}.tgz.sha256
+      - name: upload cli
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.target }}-${{ matrix.os }}-${{ matrix.arch }}.tgz
           path: _output/release/${{ matrix.target }}-${{ matrix.os }}-${{ matrix.arch }}.tgz
   Generate-subject-for-provenance:
     needs: [release-assests]
@@ -92,6 +96,25 @@ jobs:
       - name: ll
         run: |
           ls _output/release
+      - name: Generate Cli hash
+        id: hash
+        run: |
+          set -euo pipefail
+          
+          files=$(find _output/release -name *.tgz.sha256)
+          
+          combined_hashes=""
+          
+          for file in "${files[@]}"; do
+            hash_line=$(cat "$file")
+            clean_hash=$(echo "$hash_line" | sed 's/sha256://')
+            combined_hashes+="$clean_hash\n"
+          done
+          
+          combined_hashes=${combined_hashes%$'\n'}
+          base64_encoded_hashes=$(echo -n "$combined_hashes" | base64)
+          echo "hashes=$base64_encoded_hashes" >> $GITHUB_OUTPUT
+
 #    id: hash
 #    run: |
 #      set -euo pipefail
@@ -118,16 +141,16 @@ jobs:
 #
 #      # 输出最终的Base64编码后的哈希值字符串
 #      echo "hashes=$base64_encoded_hashes" >> $GITHUB_OUTPUT
-#  release-provenance:
-#    needs: [Generate-subject-for-provenance]
-#    permissions:
-#      actions: read # for detecting the Github Actions environment
-#      id-token: write # Needed for provenance signing and ID
-#      contents: write #  Needed for release uploads
-#    # Must be refernced by a tag. https://github.com/slsa-framework/slsa-github-generator/blob/main/internal/builders/container/README.md#referencing-the-slsa-generator
-#    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.0.0
-#    with:
-#      base64-subjects: "${{ needs.Generate-subject-for-provenance.outputs.hashes }}"
-#      provenance-name: "karmada-cli.intoto.jsonl"
+  release-provenance:
+    needs: [Generate-subject-for-provenance]
+    permissions:
+      actions: read # for detecting the Github Actions environment
+      id-token: write # Needed for provenance signing and ID
+      contents: write #  Needed for release uploads
+    # Must be refernced by a tag. https://github.com/slsa-framework/slsa-github-generator/blob/main/internal/builders/container/README.md#referencing-the-slsa-generator
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.0.0
+    with:
+      base64-subjects: "${{ needs.Generate-subject-for-provenance.outputs.hashes }}"
+      provenance-name: "karmada-cli.intoto.jsonl"
       
 
