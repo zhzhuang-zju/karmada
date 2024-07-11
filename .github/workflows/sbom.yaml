@@ -75,7 +75,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.target }}-${{ matrix.os }}-${{ matrix.arch }}.tgz.sha256
+          name: sha256-${{ matrix.target }}-${{ matrix.os }}-${{ matrix.arch }}.tgz.sha256
           path: _output/release/${{ matrix.target }}-${{ matrix.os }}-${{ matrix.arch }}.tgz
   Generate-subject-for-provenance:
     needs: [release-assests]
@@ -86,11 +86,11 @@ jobs:
       - name: download
         uses: actions/download-artifact@v4
         with:
-          name: release
+          name: sha256*
           path: _output/release/
-      - name: cat
+      - name: ll
         run: |
-          ll _output/release
+          ls _output/release
 #    id: hash
 #    run: |
 #      set -euo pipefail
