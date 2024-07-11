@@ -79,6 +79,7 @@ jobs:
           path: _output/release/${{ matrix.target }}-${{ matrix.os }}-${{ matrix.arch }}.tgz
   Generate-subject-for-provenance:
     needs: [release-assests]
+    runs-on: ubuntu-22.04
     outputs:
       hashes: ${{ steps.hash.outputs.hashes }}
     steps:
