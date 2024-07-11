@@ -2,48 +2,48 @@ name: SBOM
 on:
   push:
 jobs:
-  sbom-assests:
-    name: Release sbom
-    runs-on: ubuntu-22.04
-    outputs:
-      hashes: ${{ steps.sbom-hash.outputs.hashes}}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Generate sbom for karmada file system
-        uses: aquasecurity/trivy-action@0.23.0
-        with:
-          scan-type: 'fs'
-          format: 'spdx'
-          output: 'sbom-karmada.spdx'
-          scan-ref: "/github/workspace/"
-      - name: tar the sbom
-        run: |
-          tar -zcf sbom.tar.gz *.spdx
-      - name: Generate SBOM hash
-        shell: bash
-        id: sbom-hash
-        run: |
-          # sha256sum generates sha256 hash for sbom.
-          # base64 -w0 encodes to base64 and outputs on a single line.
-          # sha256sum /tmp/sbom.tar.gz ... | base64 -w0
-          echo "hashes=$(sha256sum sbom.tar.gz | base64 -w0)" >> "$GITHUB_OUTPUT"
-      - name: upload
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: sbom.tar.gz
-          path: sbom.tar.gz
-  sbom-provenance:
-    needs: [sbom-assests]
-    permissions:
-      actions: read # for detecting the Github Actions environment
-      id-token: write # Needed for provenance signing and ID
-      contents: write #  Needed for release uploads
-    # Must be refernced by a tag. https://github.com/slsa-framework/slsa-github-generator/blob/main/internal/builders/container/README.md#referencing-the-slsa-generator
-    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.0.0
-    with:
-      base64-subjects: "${{ needs.sbom-assests.outputs.hashes }}"
-      provenance-name: "karmada-sbom.intoto.jsonl"
+#  sbom-assests:
+#    name: Release sbom
+#    runs-on: ubuntu-22.04
+#    outputs:
+#      hashes: ${{ steps.sbom-hash.outputs.hashes}}
+#    steps:
+#      - uses: actions/checkout@v4
+#      - name: Generate sbom for karmada file system
+#        uses: aquasecurity/trivy-action@0.23.0
+#        with:
+#          scan-type: 'fs'
+#          format: 'spdx'
+#          output: 'sbom-karmada.spdx'
+#          scan-ref: "/github/workspace/"
+#      - name: tar the sbom
+#        run: |
+#          tar -zcf sbom.tar.gz *.spdx
+#      - name: Generate SBOM hash
+#        shell: bash
+#        id: sbom-hash
+#        run: |
+#          # sha256sum generates sha256 hash for sbom.
+#          # base64 -w0 encodes to base64 and outputs on a single line.
+#          # sha256sum /tmp/sbom.tar.gz ... | base64 -w0
+#          echo "hashes=$(sha256sum sbom.tar.gz | base64 -w0)" >> "$GITHUB_OUTPUT"
+#      - name: upload
+#        if: always()
+#        uses: actions/upload-artifact@v4
+#        with:
+#          name: sbom.tar.gz
+#          path: sbom.tar.gz
+#  sbom-provenance:
+#    needs: [sbom-assests]
+#    permissions:
+#      actions: read # for detecting the Github Actions environment
+#      id-token: write # Needed for provenance signing and ID
+#      contents: write #  Needed for release uploads
+#    # Must be refernced by a tag. https://github.com/slsa-framework/slsa-github-generator/blob/main/internal/builders/container/README.md#referencing-the-slsa-generator
+#    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.0.0
+#    with:
+#      base64-subjects: "${{ needs.sbom-assests.outputs.hashes }}"
+#      provenance-name: "karmada-sbom.intoto.jsonl"
   release-assests:
     name: release kubectl-karmada
     runs-on: ubuntu-22.04
@@ -101,11 +101,9 @@ jobs:
         run: |
           set -euo pipefail
           
-          files=$(find _output/release -name *.tgz.sha256)
-          
           combined_hashes=""
           
-          for file in "${files[@]}"; do
+          for file in $(ls "_output/release"); do
             hash_line=$(cat "$file")
             clean_hash=$(echo "$hash_line" | sed 's/sha256://')
             combined_hashes+="$clean_hash\n"
