@@ -43,13 +43,46 @@ jobs:
 #          files: |
 #            _output/release/${{ matrix.target }}-${{ matrix.os }}-${{ matrix.arch }}.tgz
 #            _output/release/${{ matrix.target }}-${{ matrix.os }}-${{ matrix.arch }}.tgz.sha256
-  generate-subject-for-cli-provenance:
+#  generate-subject-for-cli-provenance:
+#    needs: [release-assests]
+#    runs-on: ubuntu-22.04
+#    outputs:
+#      hashes: ${{ steps.hash.outputs.hashes }}
+#    steps:
+#      - name: download sha256 hash
+#        uses: actions/download-artifact@v4
+#        with:
+#          path: _output/release
+#          pattern: cli-*
+#          merge-multiple: true
+#      - name: generate cli hash
+#        id: hash
+#        run: |
+#          cd _output/release
+#          # sha256sum generates sha256 hash for cli.
+#          # base64 -w0 encodes to base64 and outputs on a single line.
+#          echo "hashes=$(sha256sum *.tgz|base64 -w0)" >> "$GITHUB_OUTPUT"
+#  cli-provenance:
+#    needs: [generate-subject-for-cli-provenance]
+#    permissions:
+#      actions: read # for detecting the Github Actions environment
+#      id-token: write # Needed for provenance signing and ID
+#      contents: write #  Needed for release uploads
+#    # Must be refernced by a tag. https://github.com/slsa-framework/slsa-github-generator/blob/main/internal/builders/container/README.md#referencing-the-slsa-generator
+#    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.0.0
+#    with:
+#      base64-subjects: "${{ needs.generate-subject-for-cli-provenance.outputs.hashes }}"
+#      provenance-name: "karmada-cli.intoto.jsonl"
+##      upload-assets: true
+  cli-provenance:
     needs: [release-assests]
     runs-on: ubuntu-22.04
-    outputs:
-      hashes: ${{ steps.hash.outputs.hashes }}
+    permissions:
+      actions: read # for detecting the Github Actions environment
+      id-token: write # Needed for provenance signing and ID
+      contents: write #  Needed for release uploads
     steps:
-      - name: download sha256 hash
+      - name: download cli
         uses: actions/download-artifact@v4
         with:
           path: _output/release
@@ -62,18 +95,12 @@ jobs:
           # sha256sum generates sha256 hash for cli.
           # base64 -w0 encodes to base64 and outputs on a single line.
           echo "hashes=$(sha256sum *.tgz|base64 -w0)" >> "$GITHUB_OUTPUT"
-  cli-provenance:
-    needs: [generate-subject-for-cli-provenance]
-    permissions:
-      actions: read # for detecting the Github Actions environment
-      id-token: write # Needed for provenance signing and ID
-      contents: write #  Needed for release uploads
-    # Must be refernced by a tag. https://github.com/slsa-framework/slsa-github-generator/blob/main/internal/builders/container/README.md#referencing-the-slsa-generator
-    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.0.0
-    with:
-      base64-subjects: "${{ needs.generate-subject-for-cli-provenance.outputs.hashes }}"
-      provenance-name: "karmada-cli.intoto.jsonl"
-#      upload-assets: true
+      # Must be referenced by a tag. https://github.com/slsa-framework/slsa-github-generator/blob/main/internal/builders/container/README.md#referencing-the-slsa-generator
+      - uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.0.0
+        with:
+          base64-subjects: "${{ steps.hash.outputs.hashes }}"
+          provenance-name: "karmada-cli.intoto.jsonl"
+          # upload-assets: true
   release-crds-assests:
     permissions:
       contents: write  # for softprops/action-gh-release to create GitHub release
