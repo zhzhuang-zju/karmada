@@ -8,7 +8,7 @@ on:
 jobs:
   use-trivy-to-scan-image:
     name: image-scanning
-    if: ${{ github.repository == 'karmada-io/karmada' }}
+    # if: ${{ github.repository == 'karmada-io/karmada' }}
     runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
@@ -41,6 +41,9 @@ jobs:
           ignore-unfixed: true
           vuln-type: 'os,library'
           output: 'trivy-results.sarif'
+      - name: go version
+        run: |
+          go version
       - name: display scan results
         uses: aquasecurity/trivy-action@0.21.0
         with:
@@ -48,7 +51,7 @@ jobs:
           format: 'table'
           ignore-unfixed: true
           vuln-type: 'os,library'
-      - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: 'trivy-results.sarif'          
+#      - name: Upload Trivy scan results to GitHub Security tab
+#        uses: github/codeql-action/upload-sarif@v3
+#        with:
+#          sarif_file: 'trivy-results.sarif'
