@@ -28,6 +28,7 @@ import (
 	metricsapi "k8s.io/metrics/pkg/apis/metrics"
 
 	autoscalingv1alpha1 "github.com/karmada-io/karmada/pkg/apis/autoscaling/v1alpha1"
+	"github.com/karmada-io/karmada/pkg/apis/cluster/v1alpha1"
 )
 
 var (
@@ -42,6 +43,8 @@ var (
 	NamespaceColumn = "NAMESPACE"
 	// PodColumn is the column name for pod.
 	PodColumn = "POD"
+	// ClusterColumns is the list of columns used in the top cluster command.
+	ClusterColumns = []string{"NAME", "CPU(cores)", "CPU%", "MEMORY(bytes)", "MEMORY%", "POD", "POD%"}
 )
 
 // ResourceMetricsInfo contains the information of a resource metric.
@@ -167,8 +170,11 @@ func printValue(out io.Writer, value interface{}) {
 	fmt.Fprintf(out, "%v\t", value)
 }
 
-func printAllResourceUsages(out io.Writer, metrics *ResourceMetricsInfo) {
-	for _, res := range MeasuredResources {
+func printAllResourceUsages(out io.Writer, metrics *ResourceMetricsInfo, supportMeasuredResources ...corev1.ResourceName) {
+	if len(supportMeasuredResources) == 0 {
+		supportMeasuredResources = MeasuredResources
+	}
+	for _, res := range supportMeasuredResources {
 		quantity := metrics.Metrics[res]
 		printSingleResourceUsage(out, res, quantity)
 		fmt.Fprint(out, "\t")
@@ -230,4 +236,29 @@ func (adder *ResourceAdder) AddPodMetrics(m *metricsapi.PodMetrics) {
 			adder.total[res] = total
 		}
 	}
+}
+
+// PrintClusterMetrics prints the given metrics to the given writer.
+func (printer *CmdPrinter) PrintClusterMetrics(clusters []v1alpha1.Cluster, noHeaders bool, sortBy string) error {
+	if len(clusters) == 0 {
+		return nil
+	}
+	w := printers.GetNewTabWriter(printer.out)
+	defer w.Flush()
+
+	sort.Sort(NewClusterSorter(clusters, sortBy))
+
+	if !noHeaders {
+		printColumnNames(w, ClusterColumns)
+	}
+
+	for _, m := range clusters {
+		printValue(w, m.Name)
+		printAllResourceUsages(w, &ResourceMetricsInfo{
+			Metrics:   m.Status.ResourceSummary.Allocated,
+			Available: m.Status.ResourceSummary.Allocatable,
+		}, corev1.ResourceCPU, corev1.ResourceMemory, corev1.ResourcePods)
+		fmt.Fprint(w, "\n")
+	}
+	return nil
 }

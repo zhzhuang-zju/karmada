@@ -36,6 +36,7 @@ import (
 const (
 	sortByCPU    = "cpu"
 	sortByMemory = "memory"
+	sortByPod    = "pod"
 )
 
 var (
@@ -62,6 +63,7 @@ func NewCmdTop(f util.Factory, parentCommand string, streams genericiooptions.IO
 
 	// create subcommands
 	cmd.AddCommand(NewCmdTopPod(f, parentCommand, nil, streams))
+	cmd.AddCommand(NewCmdTopCluster(f, parentCommand, nil, streams))
 
 	return cmd
 }
