@@ -19,6 +19,7 @@ package detector
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"regexp"
 	"sync"
 	"time"
@@ -1103,7 +1104,13 @@ func (d *ResourceDetector) HandlePropagationPolicyDeletion(policyID string) erro
 		return err
 	}
 
-	cleanupMarksFunc := func(obj metav1.Object) {
+	cleanupMarksFunc := func(obj metav1.Object, targetPolicyLabel string, targetPolicyID string) {
+		// When cleaning up the marks, the resource template may have already been bound to a new clusterPropagationPolicy, causing the marks' values to change.
+		// More info can refer to https://github.com/karmada-io/karmada/issues/5307.
+		if obj.GetLabels()[targetPolicyLabel] != targetPolicyID {
+			return
+		}
+
 		util.RemoveLabels(obj, propagationPolicyMarkedLabels...)
 		util.RemoveAnnotations(obj, propagationPolicyMarkedAnnotations...)
 	}
@@ -1112,7 +1119,7 @@ func (d *ResourceDetector) HandlePropagationPolicyDeletion(policyID string) erro
 		// Must remove the marks, such as labels and annotations, from the resource template ahead of ResourceBinding,
 		// otherwise might lose the chance to do that in a retry loop (in particular, the marks was successfully removed
 		// from ResourceBinding, but resource template not), since the ResourceBinding will not be listed again.
-		if err := d.CleanupResourceTemplateMarks(binding.Spec.Resource, cleanupMarksFunc); err != nil {
+		if err := d.CleanupResourceTemplateMarks(binding.Spec.Resource, policyv1alpha1.PropagationPolicyPermanentIDLabel, policyID, cleanupMarksFunc); err != nil {
 			klog.Errorf("Failed to clean up marks from resource(%s-%s/%s) when propagationPolicy removed, error: %v",
 				binding.Spec.Resource.Kind, binding.Spec.Resource.Namespace, binding.Spec.Resource.Name, err)
 			errs = append(errs, err)
@@ -1121,7 +1128,7 @@ func (d *ResourceDetector) HandlePropagationPolicyDeletion(policyID string) erro
 		}
 
 		// Clean up the marks from the reference binding so that the karmada scheduler won't reschedule the binding.
-		if err := d.CleanupResourceBindingMarks(&rbs.Items[index], cleanupMarksFunc); err != nil {
+		if err := d.CleanupResourceBindingMarks(&rbs.Items[index], policyv1alpha1.PropagationPolicyPermanentIDLabel, policyID, cleanupMarksFunc); err != nil {
 			klog.Errorf("Failed to clean up marks from resource binding(%s/%s) when propagationPolicy removed, error: %v",
 				binding.Namespace, binding.Name, err)
 			errs = append(errs, err)
@@ -1141,7 +1148,12 @@ func (d *ResourceDetector) HandleClusterPropagationPolicyDeletion(policyID strin
 		policyv1alpha1.ClusterPropagationPolicyPermanentIDLabel: policyID,
 	}
 
-	cleanupMarksFun := func(obj metav1.Object) {
+	cleanupMarksFun := func(obj metav1.Object, targetPolicyLabel string, targetPolicyID string) {
+		// When cleaning up the marks, the resource template may have already been bound to a new clusterPropagationPolicy, causing the marks' values to change.
+		// More info can refer to https://github.com/karmada-io/karmada/issues/5307.
+		if obj.GetLabels()[targetPolicyLabel] != targetPolicyID {
+			return
+		}
 		util.RemoveLabels(obj, clusterPropagationPolicyMarkedLabels...)
 		util.RemoveAnnotations(obj, clusterPropagationPolicyMarkedAnnotations...)
 	}
@@ -1157,7 +1169,7 @@ func (d *ResourceDetector) HandleClusterPropagationPolicyDeletion(policyID strin
 			// ClusterResourceBinding, otherwise might lose the chance to do that in a retry loop (in particular, the
 			// marks was successfully removed from ClusterResourceBinding, but resource template not), since the
 			// ClusterResourceBinding will not be listed again.
-			if err := d.CleanupResourceTemplateMarks(binding.Spec.Resource, cleanupMarksFun); err != nil {
+			if err := d.CleanupResourceTemplateMarks(binding.Spec.Resource, policyv1alpha1.ClusterPropagationPolicyPermanentIDLabel, policyID, cleanupMarksFun); err != nil {
 				klog.Errorf("Failed to clean up marks from resource(%s-%s) when clusterPropagationPolicy removed, error: %v",
 					binding.Spec.Resource.Kind, binding.Spec.Resource.Name, err)
 				// Skip cleaning up policy labels and annotations from ClusterResourceBinding, give a chance to do that in a retry loop.
@@ -1165,7 +1177,7 @@ func (d *ResourceDetector) HandleClusterPropagationPolicyDeletion(policyID strin
 			}
 
 			// Clean up the marks from the reference binding so that the Karmada scheduler won't reschedule the binding.
-			if err := d.CleanupClusterResourceBindingMarks(&crbs.Items[index], cleanupMarksFun); err != nil {
+			if err := d.CleanupClusterResourceBindingMarks(&crbs.Items[index], policyv1alpha1.ClusterPropagationPolicyPermanentIDLabel, policyID, cleanupMarksFun); err != nil {
 				klog.Errorf("Failed to clean up marks from clusterResourceBinding(%s) when clusterPropagationPolicy removed, error: %v",
 					binding.Name, err)
 				errs = append(errs, err)
@@ -1183,7 +1195,7 @@ func (d *ResourceDetector) HandleClusterPropagationPolicyDeletion(policyID strin
 			// Must remove the marks, such as labels and annotations, from the resource template ahead of ResourceBinding,
 			// otherwise might lose the chance to do that in a retry loop (in particular, the label was successfully
 			// removed from ResourceBinding, but resource template not), since the ResourceBinding will not be listed again.
-			if err := d.CleanupResourceTemplateMarks(binding.Spec.Resource, cleanupMarksFun); err != nil {
+			if err := d.CleanupResourceTemplateMarks(binding.Spec.Resource, policyv1alpha1.ClusterPropagationPolicyPermanentIDLabel, policyID, cleanupMarksFun); err != nil {
 				klog.Errorf("Failed to clean up marks from resource(%s-%s/%s) when clusterPropagationPolicy removed, error: %v",
 					binding.Spec.Resource.Kind, binding.Spec.Resource.Namespace, binding.Spec.Resource.Name, err)
 				errs = append(errs, err)
@@ -1192,7 +1204,7 @@ func (d *ResourceDetector) HandleClusterPropagationPolicyDeletion(policyID strin
 			}
 
 			// Clean up the marks from the reference binding so that the Karmada scheduler won't reschedule the binding.
-			if err := d.CleanupResourceBindingMarks(&rbs.Items[index], cleanupMarksFun); err != nil {
+			if err := d.CleanupResourceBindingMarks(&rbs.Items[index], policyv1alpha1.ClusterPropagationPolicyPermanentIDLabel, policyID, cleanupMarksFun); err != nil {
 				klog.Errorf("Failed to clean up marks from resourceBinding(%s/%s) when clusterPropagationPolicy removed, error: %v",
 					binding.Namespace, binding.Name, err)
 				errs = append(errs, err)
@@ -1334,7 +1346,7 @@ func (d *ResourceDetector) HandleClusterPropagationPolicyCreationOrUpdate(policy
 }
 
 // CleanupResourceTemplateMarks removes marks, such as labels and annotations, from object referencing by objRef.
-func (d *ResourceDetector) CleanupResourceTemplateMarks(objRef workv1alpha2.ObjectReference, cleanupFunc func(obj metav1.Object)) error {
+func (d *ResourceDetector) CleanupResourceTemplateMarks(objRef workv1alpha2.ObjectReference, targetPolicyLabel string, targetPolicyID string, cleanupFunc func(obj metav1.Object, targetPolicyLabel string, targetPolicyID string)) error {
 	gvr, err := restmapper.GetGroupVersionResource(d.RESTMapper, schema.FromAPIVersionAndKind(objRef.APIVersion, objRef.Kind))
 	if err != nil {
 		klog.Errorf("Failed to convert GVR from GVK(%s/%s), err: %v", objRef.APIVersion, objRef.Kind, err)
@@ -1352,7 +1364,13 @@ func (d *ResourceDetector) CleanupResourceTemplateMarks(objRef workv1alpha2.Obje
 			return err
 		}
 
-		cleanupFunc(workload)
+		workloadCopy := workload.DeepCopy()
+		cleanupFunc(workload, targetPolicyLabel, targetPolicyID)
+
+		if reflect.DeepEqual(workload, workloadCopy) {
+			klog.Infof("No need to clean up the marks on resource(kind=%s, %s/%s) since they have changed", workload.GetKind(), workload.GetNamespace(), workload.GetName())
+			return nil
+		}
 
 		_, err = d.DynamicClient.Resource(gvr).Namespace(workload.GetNamespace()).Update(context.TODO(), workload, metav1.UpdateOptions{})
 		if err != nil {
@@ -1365,9 +1383,14 @@ func (d *ResourceDetector) CleanupResourceTemplateMarks(objRef workv1alpha2.Obje
 }
 
 // CleanupResourceBindingMarks removes marks, such as labels and annotations, from resource binding.
-func (d *ResourceDetector) CleanupResourceBindingMarks(rb *workv1alpha2.ResourceBinding, cleanupFunc func(obj metav1.Object)) error {
+func (d *ResourceDetector) CleanupResourceBindingMarks(rb *workv1alpha2.ResourceBinding, targetPolicyLabel string, targetPolicyID string, cleanupFunc func(obj metav1.Object, targetPolicyLabel string, targetPolicyID string)) error {
 	return retry.RetryOnConflict(retry.DefaultRetry, func() (err error) {
-		cleanupFunc(rb)
+		rbCopy := rb.DeepCopy()
+		cleanupFunc(rb, targetPolicyLabel, targetPolicyID)
+		if reflect.DeepEqual(rbCopy, rb) {
+			klog.Infof("No need to clean up the marks on resourceBinding(%s/%s) since they have changed", rb.GetNamespace(), rb.GetName())
+			return nil
+		}
 		updateErr := d.Client.Update(context.TODO(), rb)
 		if updateErr == nil {
 			return nil
@@ -1377,16 +1400,21 @@ func (d *ResourceDetector) CleanupResourceBindingMarks(rb *workv1alpha2.Resource
 		if err = d.Client.Get(context.TODO(), client.ObjectKey{Namespace: rb.GetNamespace(), Name: rb.GetName()}, updated); err == nil {
 			rb = updated.DeepCopy()
 		} else {
-			klog.Errorf("Failed to get updated resource binding %s/%s: %v", rb.GetNamespace(), rb.GetName(), err)
+			klog.Errorf("Failed to get updated resourceBinding(%s/%s): %v", rb.GetNamespace(), rb.GetName(), err)
 		}
 		return updateErr
 	})
 }
 
 // CleanupClusterResourceBindingMarks removes marks, such as labels and annotations, from cluster resource binding.
-func (d *ResourceDetector) CleanupClusterResourceBindingMarks(crb *workv1alpha2.ClusterResourceBinding, cleanupFunc func(obj metav1.Object)) error {
+func (d *ResourceDetector) CleanupClusterResourceBindingMarks(crb *workv1alpha2.ClusterResourceBinding, targetPolicyLabel string, targetPolicyID string, cleanupFunc func(obj metav1.Object, targetPolicyLabel string, targetPolicyID string)) error {
 	return retry.RetryOnConflict(retry.DefaultRetry, func() (err error) {
-		cleanupFunc(crb)
+		crbCopy := crb.DeepCopy()
+		cleanupFunc(crb, targetPolicyLabel, targetPolicyID)
+		if reflect.DeepEqual(crb, crbCopy) {
+			klog.Infof("No need to clean up the marks on clusterResourceBinding(%s) since they have changed", crb.GetName())
+			return nil
+		}
 		updateErr := d.Client.Update(context.TODO(), crb)
 		if updateErr == nil {
 			return nil
@@ -1396,7 +1424,7 @@ func (d *ResourceDetector) CleanupClusterResourceBindingMarks(crb *workv1alpha2.
 		if err = d.Client.Get(context.TODO(), client.ObjectKey{Name: crb.GetName()}, updated); err == nil {
 			crb = updated.DeepCopy()
 		} else {
-			klog.Errorf("Failed to get updated cluster resource binding %s: %v", crb.GetName(), err)
+			klog.Errorf("Failed to get updated clusterResourceBinding(%s): %v", crb.GetName(), err)
 		}
 		return updateErr
 	})
