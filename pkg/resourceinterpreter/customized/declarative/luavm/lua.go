@@ -70,8 +70,30 @@ func (vm *VM) NewLuaState() (*lua.LState, error) {
 	return l, err
 }
 
-// RunScript got a lua vm from pool, and execute script with given arguments.
 func (vm *VM) RunScript(script string, fnName string, nRets int, args ...interface{}) ([]lua.LValue, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	var rets []lua.LValue
+	var err error
+	var complete bool
+	go func() {
+		defer cancel()
+		rets, err = vm.RunScriptWithContext(ctx, script, fnName, nRets, args...)
+		complete = true
+	}()
+	for {
+		select {
+		case <-ctx.Done():
+			if complete {
+				return rets, err
+			}
+			return nil, fmt.Errorf("the context timeout")
+		default:
+		}
+	}
+
+}
+
+func (vm *VM) RunScriptWithContext(ctx context.Context, script string, fnName string, nRets int, args ...interface{}) ([]lua.LValue, error) {
 	a, err := vm.Pool.Get()
 	if err != nil {
 		return nil, err
@@ -81,8 +103,6 @@ func (vm *VM) RunScript(script string, fnName string, nRets int, args ...interfa
 	l := a.(*lua.LState)
 	l.Pop(l.GetTop())
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
 	l.SetContext(ctx)
 
 	err = l.DoString(script)
