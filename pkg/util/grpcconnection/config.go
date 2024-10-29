@@ -21,14 +21,27 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"net"
 	"os"
+	"sync"
 	"time"
 
 	"google.golang.org/grpc"
 	grpccredentials "google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/apiserver/pkg/server/dynamiccertificates"
+	"k8s.io/client-go/util/workqueue"
+	"k8s.io/klog/v2"
+
+	"github.com/karmada-io/karmada/pkg/util"
 )
+
+type GRPCServer interface {
+	NewServer() error
+	Serve(stopCh <-chan struct{}) error
+}
 
 // ServerConfig the config of GRPC server side.
 type ServerConfig struct {
@@ -45,6 +58,100 @@ type ServerConfig struct {
 	CertFile string
 	// KeyFile SSL key file used for grpc SSL/TLS connections.
 	KeyFile string
+
+	DynamicEnabled bool
+}
+
+// NewServer creates a gRPC server which has no service registered and has not
+// started to accept requests yet.
+func (s *ServerConfig) newServer(servingCertProvider *dynamiccertificates.DynamicCertKeyPairContent) (*grpc.Server, error) {
+	if servingCertProvider == nil {
+		return grpc.NewServer(), nil
+	}
+
+	config := &tls.Config{
+		MinVersion: tls.VersionTLS13,
+	}
+
+	config.GetCertificate = func(_ *tls.ClientHelloInfo) (*tls.Certificate, error) {
+		cert, key := servingCertProvider.CurrentCertKeyContent()
+		certKeyPair, err := tls.X509KeyPair(cert, key)
+		return &certKeyPair, err
+	}
+
+	if s.ClientAuthCAFile != "" {
+		certPool := x509.NewCertPool()
+		ca, err := os.ReadFile(s.ClientAuthCAFile)
+		if err != nil {
+			return nil, err
+		}
+		if ok := certPool.AppendCertsFromPEM(ca); !ok {
+			return nil, fmt.Errorf("failed to append ca into certPool")
+		}
+		config.ClientCAs = certPool
+		if !s.InsecureSkipClientVerify {
+			config.ClientAuth = tls.RequireAndVerifyClientCert
+		}
+	}
+
+	return grpc.NewServer(grpc.Creds(grpccredentials.NewTLS(config))), nil
+}
+
+func (s *ServerConfig) IsDynamic() bool {
+	return s.CertFile != "" && s.KeyFile != "" && s.DynamicEnabled
+}
+
+type StaticServerConfig struct {
+	*ServerConfig
+
+	ServiceRegisterFunc  func(s *grpc.Server)
+	NetListenerGenerator func() (net.Listener, error)
+	Server               *grpc.Server
+}
+
+func (s *StaticServerConfig) NewServer() error {
+	var servingCertProvider *dynamiccertificates.DynamicCertKeyPairContent
+	var err error
+	if s.CertFile != "" && s.KeyFile != "" {
+		servingCertProvider, err = dynamiccertificates.NewDynamicServingContentFromFiles("serving grpc", s.CertFile, s.KeyFile)
+		if err != nil {
+			return fmt.Errorf("loading tls config (%s, %s) failed - %s", s.CertFile, s.KeyFile, err)
+		}
+	}
+	s.Server, err = s.newServer(servingCertProvider)
+
+	return err
+}
+
+func (s *StaticServerConfig) Serve(stopCh <-chan struct{}) error {
+	// Graceful stop when the context is cancelled.
+	go func() {
+		<-stopCh
+		s.Server.GracefulStop()
+	}()
+
+	s.ServiceRegisterFunc(s.Server)
+	l, err := s.NetListenerGenerator()
+	if err != nil {
+		return err
+	}
+	defer l.Close()
+
+	return s.Server.Serve(l)
+}
+
+type DynamicServerConfig struct {
+	*ServerConfig
+
+	ServingCertProvider *dynamiccertificates.DynamicCertKeyPairContent
+	sync.RWMutex
+	Server *grpc.Server
+
+	ServiceRegisterFunc  func(s *grpc.Server)
+	NetListenerGenerator func() (net.Listener, error)
+	Queue                workqueue.RateLimitingInterface
+
+	ErrChan chan error
 }
 
 // ClientConfig the config of GRPC client side.
@@ -66,38 +173,101 @@ type ClientConfig struct {
 	KeyFile string
 }
 
-// NewServer creates a gRPC server which has no service registered and has not
-// started to accept requests yet.
-func (s *ServerConfig) NewServer() (*grpc.Server, error) {
-	if s.CertFile == "" || s.KeyFile == "" {
-		return grpc.NewServer(), nil
-	}
-
-	cert, err := tls.LoadX509KeyPair(s.CertFile, s.KeyFile)
-	if err != nil {
-		return nil, err
-	}
-	config := &tls.Config{
-		Certificates: []tls.Certificate{cert},
-		MinVersion:   tls.VersionTLS13,
-	}
-
-	if s.ClientAuthCAFile != "" {
-		certPool := x509.NewCertPool()
-		ca, err := os.ReadFile(s.ClientAuthCAFile)
+func (d *DynamicServerConfig) NewServer() error {
+	var err error
+	if d.CertFile != "" && d.KeyFile != "" && d.ServingCertProvider == nil {
+		d.ServingCertProvider, err = dynamiccertificates.NewDynamicServingContentFromFiles("serving grpc", d.CertFile, d.KeyFile)
 		if err != nil {
-			return nil, err
-		}
-		if ok := certPool.AppendCertsFromPEM(ca); !ok {
-			return nil, fmt.Errorf("failed to append ca into certPool")
-		}
-		config.ClientCAs = certPool
-		if !s.InsecureSkipClientVerify {
-			config.ClientAuth = tls.RequireAndVerifyClientCert
+			return fmt.Errorf("loading tls config (%s, %s) failed - %s", d.CertFile, d.KeyFile, err)
 		}
 	}
 
-	return grpc.NewServer(grpc.Creds(grpccredentials.NewTLS(config))), nil
+	d.Server, err = d.ServerConfig.newServer(d.ServingCertProvider)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (d *DynamicServerConfig) Serve(stopCh <-chan struct{}) error {
+	return d.serveWithDynamicCerts(stopCh)
+}
+
+func (d *DynamicServerConfig) serveWithDynamicCerts(stopCh <-chan struct{}) error {
+	d.ServingCertProvider.AddListener(d)
+
+	go func() {
+		err := d.serve()
+		if err != nil {
+			d.ErrChan <- err
+		}
+	}()
+
+	ctx, cancel := util.ContextForChannel(stopCh)
+	go wait.UntilWithContext(ctx, d.dynamicCertLoader, time.Second)
+	go d.ServingCertProvider.Run(ctx, 1)
+
+	for {
+		select {
+		case err := <-d.ErrChan:
+			cancel()
+			return err
+		case <-stopCh:
+			return nil
+		}
+	}
+}
+
+func (d *DynamicServerConfig) serve() error {
+	d.ServiceRegisterFunc(d.Server)
+	lis, err := d.NetListenerGenerator()
+	if err != nil {
+		return err
+	}
+	defer lis.Close()
+
+	if err = d.Server.Serve(lis); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (d *DynamicServerConfig) Enqueue() {
+	d.Queue.Add(struct{}{})
+}
+
+func (d *DynamicServerConfig) dynamicCertLoader(ctx context.Context) {
+	for d.processNext(ctx) {
+	}
+}
+
+func (d *DynamicServerConfig) processNext(_ context.Context) bool {
+	key, shutdown := d.Queue.Get()
+	if shutdown {
+		klog.Errorf("Fail to pop item from Queue")
+		return false
+	}
+	defer d.Queue.Done(key)
+
+	d.Lock()
+	defer d.Unlock()
+
+	d.Server.GracefulStop()
+	err := d.NewServer()
+	if err != nil {
+		d.ErrChan <- err
+		return false
+	}
+
+	go func() {
+		if err = d.serve(); err != nil {
+			d.ErrChan <- err
+		}
+	}()
+
+	return true
 }
 
 // DialWithTimeOut will attempt to create a client connection based on the given targets, one at a time, until a client connection is successfully established.

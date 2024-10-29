@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/kr/pretty"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -38,6 +39,7 @@ import (
 	listv1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/restmapper"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog/v2"
 
 	"github.com/karmada-io/karmada/cmd/scheduler-estimator/app/options"
@@ -160,28 +162,44 @@ func (es *AccurateSchedulerEstimatorServer) Start(ctx context.Context) error {
 		return fmt.Errorf("informer factory for cluster does not exist")
 	}
 
-	// Listen a port and register the gRPC server.
-	l, err := net.Listen("tcp", fmt.Sprintf(":%d", es.GrpcConfig.ServerPort))
-	if err != nil {
-		return fmt.Errorf("failed to listen port %d: %v", es.GrpcConfig.ServerPort, err)
+	serviceRegisterFunc := func(s *grpc.Server) {
+		estimatorservice.RegisterEstimatorServer(s, es)
 	}
-	klog.Infof("Listening port: %d", es.GrpcConfig.ServerPort)
-	defer l.Close()
-
-	s, err := es.GrpcConfig.NewServer()
-	if err != nil {
-		return fmt.Errorf("failed to create grpc server: %v", err)
+	netListenerGenerator := func() (net.Listener, error) {
+		// Listen a port and register the gRPC server.
+		l, err := net.Listen("tcp", fmt.Sprintf(":%d", es.GrpcConfig.ServerPort))
+		if err != nil {
+			return nil, fmt.Errorf("failed to listen port %d: %v", es.GrpcConfig.ServerPort, err)
+		}
+		klog.Infof("Listening port: %d", es.GrpcConfig.ServerPort)
+		return l, nil
 	}
-	estimatorservice.RegisterEstimatorServer(s, es)
 
-	// Graceful stop when the context is cancelled.
-	go func() {
-		<-stopCh
-		s.GracefulStop()
-	}()
+	es.GrpcConfig.DynamicEnabled = true
 
-	// Start the gRPC server.
-	if err := s.Serve(l); err != nil {
+	var grpcServer grpcconnection.GRPCServer
+	if es.GrpcConfig.IsDynamic() {
+		grpcServer = &grpcconnection.DynamicServerConfig{
+			ServerConfig:         es.GrpcConfig,
+			ServiceRegisterFunc:  serviceRegisterFunc,
+			NetListenerGenerator: netListenerGenerator,
+			ErrChan:              make(chan error, 1),
+			Queue:                workqueue.NewRateLimitingQueueWithConfig(workqueue.DefaultControllerRateLimiter(), workqueue.RateLimitingQueueConfig{Name: "server-cert"})}
+	} else {
+		grpcServer = &grpcconnection.StaticServerConfig{
+			ServerConfig:         es.GrpcConfig,
+			ServiceRegisterFunc:  serviceRegisterFunc,
+			NetListenerGenerator: netListenerGenerator,
+		}
+	}
+
+	err := grpcServer.NewServer()
+	if err != nil{
+		return err
+	}
+
+	err = grpcServer.Serve(stopCh)
+	if err != nil {
 		return err
 	}
 
