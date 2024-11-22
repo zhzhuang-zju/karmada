@@ -365,8 +365,13 @@ func (o *CommandRegisterOption) Run(parentCommand string) error {
 	}
 
 	var rbacClient *kubeclient.Clientset
+	rbacClient, err = o.EnsureNecessaryResourcesExistInControlPlane(bootstrapClient, karmadaClusterInfo)
+	if err != nil {
+		return err
+	}
+
 	defer func() {
-		if err != nil && rbacClient != nil {
+		if err != nil {
 			fmt.Println("karmadactl register failed and started deleting the created resources")
 			err = o.rbacResources.Delete(rbacClient)
 			if err != nil {
@@ -374,12 +379,6 @@ func (o *CommandRegisterOption) Run(parentCommand string) error {
 			}
 		}
 	}()
-
-	rbacClient, err = o.EnsureNecessaryResourcesExistInControlPlane(bootstrapClient, karmadaClusterInfo)
-	if err != nil {
-		return err
-	}
-
 	err = o.EnsureNecessaryResourcesExistInMemberCluster(bootstrapClient, karmadaClusterInfo)
 	if err != nil {
 		return err
@@ -424,6 +423,10 @@ func (o *CommandRegisterOption) EnsureNecessaryResourcesExistInControlPlane(boot
 	fmt.Println("[karmada-agent-start] Assign the necessary RBAC permissions to the agent")
 	err = o.ensureAgentRBACResourcesExistInControlPlane(kubelient)
 	if err != nil {
+		err = o.rbacResources.Delete(kubelient)
+		if err != nil {
+			klog.Warningf("Failed to delete rbac resources: %v", err)
+		}
 		return kubelient, err
 	}
 
