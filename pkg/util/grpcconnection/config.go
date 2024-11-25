@@ -17,12 +17,10 @@ limitations under the License.
 package grpcconnection
 
 import (
-	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
 	"os"
-	"time"
 
 	"google.golang.org/grpc"
 	grpccredentials "google.golang.org/grpc/credentials"
@@ -100,11 +98,9 @@ func (s *ServerConfig) NewServer() (*grpc.Server, error) {
 	return grpc.NewServer(grpc.Creds(grpccredentials.NewTLS(config))), nil
 }
 
-// DialWithTimeOut will attempt to create a client connection based on the given targets, one at a time, until a client connection is successfully established.
-func (c *ClientConfig) DialWithTimeOut(paths []string, timeout time.Duration) (*grpc.ClientConn, error) {
-	opts := []grpc.DialOption{
-		grpc.WithBlock(),
-	}
+// Dial will attempt to create a client connection based on the given targets, one at a time, until a client connection is successfully established.
+func (c *ClientConfig) Dial(paths []string) (*grpc.ClientConn, error) {
+	opts := []grpc.DialOption{}
 
 	var cred grpccredentials.TransportCredentials
 	if c.ServerAuthCAFile == "" && !c.InsecureSkipServerVerify {
@@ -141,7 +137,7 @@ func (c *ClientConfig) DialWithTimeOut(paths []string, timeout time.Duration) (*
 	var err error
 	var allErrs []error
 	for _, path := range paths {
-		cc, err = createGRPCConnection(path, timeout, opts...)
+		cc, err = createGRPCConnection(path, opts...)
 		if err == nil {
 			return cc, nil
 		}
@@ -151,14 +147,10 @@ func (c *ClientConfig) DialWithTimeOut(paths []string, timeout time.Duration) (*
 	return nil, utilerrors.NewAggregate(allErrs)
 }
 
-func createGRPCConnection(path string, timeout time.Duration, opts ...grpc.DialOption) (conn *grpc.ClientConn, err error) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
-	cc, err := grpc.DialContext(ctx, path, opts...)
+func createGRPCConnection(path string, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
+	conn, err := grpc.NewClient(path, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("dial %s error: %v", path, err)
 	}
-
-	return cc, nil
+	return conn, nil
 }

@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"strings"
 	"sync"
-	"time"
 
 	"google.golang.org/grpc"
 	"k8s.io/client-go/kubernetes"
@@ -116,7 +115,7 @@ func EstablishConnection(kubeClient kubernetes.Interface, serviceInfo SchedulerE
 	}
 
 	klog.Infof("Start dialing estimator server(%s) of cluster(%s).", strings.Join(serverAddrs, ","), serviceInfo.Name)
-	cc, err := grpcConfig.DialWithTimeOut(serverAddrs, 5*time.Second)
+	cc, err := grpcConfig.Dial(serverAddrs)
 	if err != nil {
 		klog.Errorf("Failed to dial cluster(%s): %v.", serviceInfo.Name, err)
 		return err
