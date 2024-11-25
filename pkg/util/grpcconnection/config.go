@@ -98,9 +98,9 @@ func (s *ServerConfig) NewServer() (*grpc.Server, error) {
 	return grpc.NewServer(grpc.Creds(grpccredentials.NewTLS(config))), nil
 }
 
-// Dial will attempt to create a client connection based on the given targets, one at a time, until a client connection is successfully established.
-func (c *ClientConfig) Dial(paths []string) (*grpc.ClientConn, error) {
-	opts := []grpc.DialOption{}
+// NewClient will attempt to create a client connection based on the given targets, one at a time, until a client connection is successfully established.
+func (c *ClientConfig) NewClient(paths []string) (*grpc.ClientConn, error) {
+	var opts []grpc.DialOption
 
 	var cred grpccredentials.TransportCredentials
 	if c.ServerAuthCAFile == "" && !c.InsecureSkipServerVerify {

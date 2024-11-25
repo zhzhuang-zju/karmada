@@ -115,7 +115,8 @@ func EstablishConnection(kubeClient kubernetes.Interface, serviceInfo SchedulerE
 	}
 
 	klog.Infof("Start dialing estimator server(%s) of cluster(%s).", strings.Join(serverAddrs, ","), serviceInfo.Name)
-	cc, err := grpcConfig.Dial(serverAddrs)
+	serverAddrs = append(serverAddrs, "karmada-scheduler-estimator-member6.karmada-system.svc.cluster.local:10352")
+	cc, err := grpcConfig.NewClient(serverAddrs)
 	if err != nil {
 		klog.Errorf("Failed to dial cluster(%s): %v.", serviceInfo.Name, err)
 		return err
