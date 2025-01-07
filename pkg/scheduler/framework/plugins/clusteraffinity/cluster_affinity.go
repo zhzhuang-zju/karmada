@@ -35,7 +35,6 @@ const (
 type ClusterAffinity struct{}
 
 var _ framework.FilterPlugin = &ClusterAffinity{}
-var _ framework.ScorePlugin = &ClusterAffinity{}
 
 // New instantiates the clusteraffinity plugin.
 func New() (framework.Plugin, error) {
@@ -74,21 +73,5 @@ func (p *ClusterAffinity) Filter(
 	}
 
 	// If no clusters specified and it is not excluded, mark it matched
-	return framework.NewResult(framework.Success)
-}
-
-// Score calculates the score on the candidate cluster.
-func (p *ClusterAffinity) Score(_ context.Context,
-	_ *workv1alpha2.ResourceBindingSpec, _ *clusterv1alpha1.Cluster) (int64, *framework.Result) {
-	return framework.MinClusterScore, framework.NewResult(framework.Success)
-}
-
-// ScoreExtensions of the Score plugin.
-func (p *ClusterAffinity) ScoreExtensions() framework.ScoreExtensions {
-	return p
-}
-
-// NormalizeScore normalizes the score for each candidate cluster.
-func (p *ClusterAffinity) NormalizeScore(_ context.Context, _ framework.ClusterScoreList) *framework.Result {
 	return framework.NewResult(framework.Success)
 }
