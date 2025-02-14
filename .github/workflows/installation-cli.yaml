@@ -45,6 +45,8 @@ jobs:
 
           # run a single e2e
           export KUBECONFIG=${HOME}/.kube/karmada-host.config:${HOME}/karmada/karmada-apiserver.config
+          export PULL_BASED_CLUSTERS="member1:${HOME}/.kube/member1.config"
+          export KARMADA_PULL_CLUSTER_NAME="member1"
           GO111MODULE=on go install github.com/onsi/ginkgo/v2/ginkgo
           ginkgo -v --race --trace -p  --focus="[BasicPropagation] propagation testing deployment propagation testing"  ./test/e2e/
       - name: export logs
