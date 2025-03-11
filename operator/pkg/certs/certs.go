@@ -71,6 +71,17 @@ type CertConfig struct {
 	AltNamesMutatorFunc altNamesMutatorFunc
 }
 
+func (config *CertConfig) notAfter(customCertificate *operatorv1alpha1.CustomCertificate) {
+	if customCertificate != nil && customCertificate.LeafCertValidityDays != nil {
+		certValidityDuration := time.Hour * 24 * time.Duration(*customCertificate.LeafCertValidityDays)
+		notAfter := time.Now().Add(certValidityDuration).UTC()
+		config.NotAfter = &notAfter
+		return
+	}
+
+	config.defaultNotAfter()
+}
+
 func (config *CertConfig) defaultPublicKeyAlgorithm() {
 	if config.PublicKeyAlgorithm == x509.UnknownPublicKeyAlgorithm {
 		config.PublicKeyAlgorithm = x509.RSA
