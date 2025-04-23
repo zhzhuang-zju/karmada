@@ -1,7 +1,7 @@
 # validate any chart changes under charts directory
 name: Chart
 env:
-  HELM_VERSION: v3.11.2
+  HELM_VERSION: v3.17.3
   KUSTOMIZE_VERSION: 5.4.3
 on:
   push:
