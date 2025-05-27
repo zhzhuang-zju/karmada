@@ -31,9 +31,11 @@ import (
 	"k8s.io/klog/v2"
 	"k8s.io/utils/ptr"
 	controllerruntime "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -166,9 +168,35 @@ func (c *ResourceBindingController) removeOrphanWorks(ctx context.Context, bindi
 
 // SetupWithManager creates a controller and register to controller manager.
 func (c *ResourceBindingController) SetupWithManager(mgr controllerruntime.Manager) error {
+	fn := predicate.Funcs{
+		CreateFunc: func(event.CreateEvent) bool {
+			return true
+		},
+
+		UpdateFunc: func(updateEvent event.UpdateEvent) bool {
+			newObj := updateEvent.ObjectNew.(*workv1alpha2.ResourceBinding)
+
+			if newObj.DeletionTimestamp != nil {
+				return true
+			}
+
+			if newObj.GetGeneration() == newObj.Status.SchedulerObservedGeneration {
+				return true
+			}
+
+			return false
+		},
+		DeleteFunc: func(e event.TypedDeleteEvent[client.Object]) bool {
+			return true
+		},
+		GenericFunc: func(e event.TypedGenericEvent[client.Object]) bool {
+			return false
+		},
+	}
+
 	return controllerruntime.NewControllerManagedBy(mgr).
 		Named(ControllerName).
-		For(&workv1alpha2.ResourceBinding{}).
+		For(&workv1alpha2.ResourceBinding{}, builder.WithPredicates(fn)).
 		WithEventFilter(predicate.GenerationChangedPredicate{}).
 		Watches(&policyv1alpha1.OverridePolicy{}, handler.EnqueueRequestsFromMapFunc(c.newOverridePolicyFunc())).
 		Watches(&policyv1alpha1.ClusterOverridePolicy{}, handler.EnqueueRequestsFromMapFunc(c.newOverridePolicyFunc())).

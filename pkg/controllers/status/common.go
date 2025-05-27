@@ -43,15 +43,17 @@ import (
 )
 
 var bindingPredicateFn = builder.WithPredicates(predicate.Funcs{
-	CreateFunc: func(event.CreateEvent) bool {
+	CreateFunc: func(e event.CreateEvent) bool {
 		// Although we don't need to process the ResourceBinding immediately upon its creation,
 		// but it's necessary to ensure that all existing ResourceBindings are processed
 		// uniformly once when the component restarts.
 		// This guarantees that no ResourceBinding is missed after a controller restart.
-		return true
+		rb := e.Object.(*workv1alpha2.ResourceBinding)
+		return len(rb.Spec.Clusters) != 0
 	},
 	UpdateFunc: func(e event.UpdateEvent) bool {
 		var oldResourceVersion, newResourceVersion string
+		var hasScheduled bool
 
 		// NOTE: We add this logic to prevent the situation as following:
 		// 1. Create Deployment and HPA.
@@ -62,8 +64,14 @@ var bindingPredicateFn = builder.WithPredicates(predicate.Funcs{
 		switch oldBinding := e.ObjectOld.(type) {
 		case *workv1alpha2.ResourceBinding:
 			oldResourceVersion = oldBinding.Spec.Resource.ResourceVersion
+			if !hasScheduled {
+				hasScheduled = len(oldBinding.Spec.Clusters) != 0
+			}
 		case *workv1alpha2.ClusterResourceBinding:
 			oldResourceVersion = oldBinding.Spec.Resource.ResourceVersion
+			if !hasScheduled {
+				hasScheduled = len(oldBinding.Spec.Clusters) != 0
+			}
 		default:
 			return false
 		}
@@ -71,13 +79,19 @@ var bindingPredicateFn = builder.WithPredicates(predicate.Funcs{
 		switch newBinding := e.ObjectNew.(type) {
 		case *workv1alpha2.ResourceBinding:
 			newResourceVersion = newBinding.Spec.Resource.ResourceVersion
+			if !hasScheduled {
+				hasScheduled = len(newBinding.Spec.Clusters) != 0
+			}
 		case *workv1alpha2.ClusterResourceBinding:
 			newResourceVersion = newBinding.Spec.Resource.ResourceVersion
+			if !hasScheduled {
+				hasScheduled = len(newBinding.Spec.Clusters) != 0
+			}
 		default:
 			return false
 		}
 
-		return oldResourceVersion != newResourceVersion
+		return (oldResourceVersion != newResourceVersion) && hasScheduled
 	},
 	DeleteFunc: func(event.DeleteEvent) bool { return false },
 })
