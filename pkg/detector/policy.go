@@ -113,7 +113,7 @@ func (d *ResourceDetector) getAndApplyPolicy(object *unstructured.Unstructured, 
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			klog.V(4).Infof("PropagationPolicy(%s/%s) has been removed.", policyNamespace, policyName)
-			return d.HandlePropagationPolicyDeletion(claimedID)
+			return d.HandlePropagationPolicyDeletion(claimedID, nil)
 		}
 		klog.Errorf("Failed to get claimed policy(%s/%s),: %v", policyNamespace, policyName, err)
 		return err

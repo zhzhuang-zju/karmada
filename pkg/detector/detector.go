@@ -954,7 +954,7 @@ func (d *ResourceDetector) ReconcilePropagationPolicy(key util.QueueKey) error {
 
 	if !propagationObject.DeletionTimestamp.IsZero() {
 		klog.Infof("PropagationPolicy(%s) is being deleted.", nkey.NamespaceKey())
-		if err = d.HandlePropagationPolicyDeletion(propagationObject.Labels[policyv1alpha1.PropagationPolicyPermanentIDLabel]); err != nil {
+		if err = d.HandlePropagationPolicyDeletion(propagationObject.Labels[policyv1alpha1.PropagationPolicyPermanentIDLabel], propagationObject.Spec.ResourceSelectors); err != nil {
 			return err
 		}
 		if controllerutil.RemoveFinalizer(propagationObject, util.PropagationPolicyControllerFinalizer) {
@@ -1047,27 +1047,22 @@ func (d *ResourceDetector) ReconcileClusterPropagationPolicy(key util.QueueKey) 
 // the resource template a change to match another policy).
 //
 // Note: The relevant ResourceBinding will continue to exist until the resource template is gone.
-func (d *ResourceDetector) HandlePropagationPolicyDeletion(policyID string) error {
+func (d *ResourceDetector) HandlePropagationPolicyDeletion(policyID string, resources []policyv1alpha1.ResourceSelector) error {
 	claimMetadata := labels.Set{policyv1alpha1.PropagationPolicyPermanentIDLabel: policyID}
+	var errs []error
+	for _, resource := range resources {
+		err := d.CleanupResourceTemplate(resource, claimMetadata, CleanupPPClaimMetadata, policyID)
+		errs = append(errs, err)
+	}
+
 	rbs, err := helper.GetResourceBindings(d.Client, claimMetadata)
 	if err != nil {
 		klog.Errorf("Failed to list propagation bindings with policy permanentID(%s): %v", policyID, err)
-		return err
+		errs = append(errs, err)
+		return errors.NewAggregate(errs)
 	}
 
-	var errs []error
 	for index, binding := range rbs.Items {
-		// Must remove the claim metadata, such as labels and annotations, from the resource template ahead of ResourceBinding,
-		// otherwise might lose the chance to do that in a retry loop (in particular, the claim metadata was successfully removed
-		// from ResourceBinding, but resource template not), since the ResourceBinding will not be listed again.
-		if err := d.CleanupResourceTemplateClaimMetadata(binding.Spec.Resource, claimMetadata, CleanupPPClaimMetadata); err != nil {
-			klog.Errorf("Failed to clean up claim metadata from resource(%s-%s/%s) when propagationPolicy removed, error: %v",
-				binding.Spec.Resource.Kind, binding.Spec.Resource.Namespace, binding.Spec.Resource.Name, err)
-			errs = append(errs, err)
-			// Skip cleaning up policy labels and annotations from ResourceBinding, give a chance to do that in a retry loop.
-			continue
-		}
-
 		// Clean up the claim metadata from the reference binding so that the karmada scheduler won't reschedule the binding.
 		if err := d.CleanupResourceBindingClaimMetadata(&rbs.Items[index], claimMetadata, CleanupPPClaimMetadata); err != nil {
 			klog.Errorf("Failed to clean up claim metadata from resource binding(%s/%s) when propagationPolicy removed, error: %v",
@@ -1273,6 +1268,47 @@ func (d *ResourceDetector) HandleClusterPropagationPolicyCreationOrUpdate(policy
 		return d.handleClusterPropagationPolicyPreemption(policy)
 	}
 
+	return nil
+}
+
+func (d *ResourceDetector) CleanupResourceTemplate(objRef policyv1alpha1.ResourceSelector, targetClaimMetadata map[string]string, cleanupFunc func(obj metav1.Object), policyID string) error {
+	gvr, err := restmapper.GetGroupVersionResource(d.RESTMapper, schema.FromAPIVersionAndKind(objRef.APIVersion, objRef.Kind))
+	if err != nil {
+		klog.Errorf("Failed to convert GVR from GVK(%s/%s), err: %v", objRef.APIVersion, objRef.Kind, err)
+		return err
+	}
+	claimMetadata := labels.Set{policyv1alpha1.PropagationPolicyPermanentIDLabel: policyID}
+
+	workloads, err := d.DynamicClient.Resource(gvr).Namespace(objRef.Namespace).List(context.TODO(), metav1.ListOptions{LabelSelector: labels.SelectorFromSet(claimMetadata).String()})
+	if err != nil {
+		klog.Errorf("Failed to fetch resource(kind=%s, %s/%s): err is %v", objRef.Kind, objRef.Namespace, objRef.Name, err)
+		return err
+	}
+	var errs []error
+	for _, workload := range workloads.Items {
+		err = retry.RetryOnConflict(retry.DefaultRetry, func() (err error) {
+			return d.cleanuptempleatemetadata(&workload, gvr, targetClaimMetadata, cleanupFunc)
+		})
+		errs = append(errs, err)
+	}
+
+	return errors.NewAggregate(errs)
+}
+
+func (d *ResourceDetector) cleanuptempleatemetadata(workload *unstructured.Unstructured, gvr schema.GroupVersionResource, targetClaimMetadata map[string]string, cleanupFunc func(obj metav1.Object)) error {
+	if !NeedCleanupClaimMetadata(workload, targetClaimMetadata) {
+		klog.Infof("No need to clean up the claim metadata on resource(kind=%s, %s/%s) since they have changed", workload.GetKind(), workload.GetNamespace(), workload.GetName())
+		return nil
+	}
+
+	cleanupFunc(workload)
+
+	_, err := d.DynamicClient.Resource(gvr).Namespace(workload.GetNamespace()).Update(context.TODO(), workload, metav1.UpdateOptions{})
+	if err != nil {
+		klog.Errorf("Failed to update resource(kind=%s, %s/%s): err is %v", workload.GetKind(), workload.GetNamespace(), workload.GetName(), err)
+		return err
+	}
+	klog.V(2).Infof("Updated resource template(kind=%s, %s/%s) successfully", workload.GetKind(), workload.GetNamespace(), workload.GetName())
 	return nil
 }
 
