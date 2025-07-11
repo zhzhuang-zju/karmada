@@ -24,6 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/dynamic/dynamicinformer"
+	"k8s.io/client-go/informers"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
 )
@@ -69,6 +70,9 @@ type SingleClusterInformerManager interface {
 
 	// GetClient returns the dynamic client.
 	GetClient() dynamic.Interface
+
+	// GetInformer returns the informer for the given resource.
+	GetInformer(resource schema.GroupVersionResource) informers.GenericInformer
 }
 
 // NewSingleClusterInformerManager constructs a new instance of singleClusterInformerManagerImpl.
@@ -197,4 +201,8 @@ func (s *singleClusterInformerManagerImpl) Context() context.Context {
 
 func (s *singleClusterInformerManagerImpl) GetClient() dynamic.Interface {
 	return s.client
+}
+
+func (s *singleClusterInformerManagerImpl) GetInformer(resource schema.GroupVersionResource) informers.GenericInformer {
+	return s.informerFactory.ForResource(resource)
 }
