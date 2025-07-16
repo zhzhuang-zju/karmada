@@ -46,8 +46,26 @@ func ValidatePropagationSpec(spec policyv1alpha1.PropagationSpec) field.ErrorLis
 		allErrs = append(allErrs, field.Invalid(field.NewPath("spec").Child("propagateDeps"), spec.PropagateDeps, "application failover is set, propagateDeps must be true"))
 	}
 	allErrs = append(allErrs, ValidateFailover(spec.Failover, field.NewPath("spec").Child("failover"))...)
-	allErrs = append(allErrs, validateResourceSelectorsIfPreemptionEnabled(spec, field.NewPath("spec").Child("resourceSelectors"))...)
+	allErrs = append(allErrs, validateResourceSelectors(spec, field.NewPath("spec").Child("resourceSelectors"))...)
 	allErrs = append(allErrs, validateSuspension(spec.Suspension, field.NewPath("spec").Child("suspension"))...)
+	return allErrs
+}
+
+// validateResourceSelectors validates the ResourceSelectors field in the given PropagationSpec.
+// It checks whether each resource selector has both APIVersion and Kind set.
+// It also performs additional validation if preemption is enabled.
+func validateResourceSelectors(spec policyv1alpha1.PropagationSpec, fldPath *field.Path) field.ErrorList {
+	var allErrs field.ErrorList
+	for index, resourceSelector := range spec.ResourceSelectors {
+		if len(resourceSelector.APIVersion) == 0 {
+			allErrs = append(allErrs, field.Invalid(fldPath.Index(index).Child("apiVersion"), resourceSelector.APIVersion, "apiVersion not set"))
+		}
+		if len(resourceSelector.Kind) == 0 {
+			allErrs = append(allErrs, field.Invalid(fldPath.Index(index).Child("kind"), resourceSelector.Kind, "kind not set"))
+		}
+	}
+
+	allErrs = append(allErrs, validateResourceSelectorsIfPreemptionEnabled(spec, fldPath)...)
 	return allErrs
 }
 

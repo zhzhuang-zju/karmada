@@ -24,6 +24,8 @@ import (
 	"net/http"
 
 	"github.com/spf13/cobra"
+	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/util/flowcontrol"
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/component-base/logs"
@@ -46,6 +48,7 @@ import (
 	"github.com/karmada-io/karmada/pkg/sharedcli/profileflag"
 	"github.com/karmada-io/karmada/pkg/util/gclient"
 	"github.com/karmada-io/karmada/pkg/util/names"
+	"github.com/karmada-io/karmada/pkg/util/restmapper"
 	"github.com/karmada-io/karmada/pkg/version"
 	"github.com/karmada-io/karmada/pkg/version/sharedcommand"
 	"github.com/karmada-io/karmada/pkg/webhook/clusteroverridepolicy"
@@ -177,6 +180,9 @@ func Run(ctx context.Context, opts *options.Options) error {
 	}
 
 	decoder := admission.NewDecoder(hookManager.GetScheme())
+	mapper := hookManager.GetRESTMapper()
+	_, err = restmapper.GetGroupVersionResource(mapper, schema.FromAPIVersionAndKind("", ""))
+	klog.Infof("1111111111111 %+v", meta.IsNoMatchError(err))
 
 	klog.Info("Registering webhooks to the webhook server")
 	hookServer := hookManager.GetWebhookServer()

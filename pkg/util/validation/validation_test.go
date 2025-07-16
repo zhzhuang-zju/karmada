@@ -812,3 +812,43 @@ func TestValidateCrdsTarBall(t *testing.T) {
 		assert.Equal(t, item.expectedErr, ValidateCrdsTarBall(item.header))
 	}
 }
+
+func TestValidateResourceSelectors(t *testing.T) {
+	fldPath := field.NewPath("spec").Child("resourceSelectors")
+	testItems := []struct {
+		name        string
+		spec        policyv1alpha1.PropagationSpec
+		expectedErr bool
+	}{
+		{
+			name: "valid resource selectors",
+			spec: policyv1alpha1.PropagationSpec{
+				ResourceSelectors: []policyv1alpha1.ResourceSelector{
+					{
+						APIVersion: "api",
+						Kind:       "kind",
+					},
+				},
+			},
+			expectedErr: false,
+		},
+		{
+			name: "empty APIVersion",
+			spec: policyv1alpha1.PropagationSpec{
+				ResourceSelectors: []policyv1alpha1.ResourceSelector{
+					{
+						APIVersion: "api",
+						Kind:       "",
+					},
+				},
+			},
+			expectedErr: true,
+		},
+	}
+	for _, item := range testItems {
+		t.Run(item.name, func(t *testing.T) {
+			err := validateResourceSelectors(item.spec, fldPath)
+			assert.Equal(t, item.expectedErr, err != nil)
+		})
+	}
+}
