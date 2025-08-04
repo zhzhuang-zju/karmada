@@ -198,11 +198,21 @@ func (s *ResourceBindingSpec) GracefulEvictCluster(name string, options *TaskOpt
 // SchedulingSuspended tells if the scheduling of ResourceBinding or
 // ClusterResourceBinding is suspended.
 func (s *ResourceBindingSpec) SchedulingSuspended() bool {
-	if s == nil || s.Suspension == nil || s.Suspension.Scheduling == nil {
+	if s == nil || s.Suspension == nil {
 		return false
 	}
 
-	return *s.Suspension.Scheduling
+	// Check if scheduling is suspended due to explicit scheduling suspension
+	if s.Suspension.Scheduling != nil && *s.Suspension.Scheduling {
+		return true
+	}
+
+	// Check if scheduling is suspended due to quota constraints
+	if s.Suspension.SchedulingDueToQuota != nil && *s.Suspension.SchedulingDueToQuota {
+		return true
+	}
+
+	return false
 }
 
 // SchedulePriorityValue returns the scheduling priority declared

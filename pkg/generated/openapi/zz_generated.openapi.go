@@ -7801,6 +7801,13 @@ func schema_pkg_apis_work_v1alpha2_Suspension(ref common.ReferenceCallback) comm
 							Format:      "",
 						},
 					},
+					"schedulingDueToQuota": {
+						SchemaProps: spec.SchemaProps{
+							Description: "SchedulingDueToQuota controls whether scheduling is suspended due to insufficient quota. When this field is set to true, it indicates that the system automatically paused scheduling because there is not enough available quota to accommodate new resource bindings.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 				},
 			},
 		},

@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"reflect"
 	"strings"
 	"time"
@@ -39,6 +40,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog/v2"
+	"k8s.io/utils/ptr"
 
 	clusterv1alpha1 "github.com/karmada-io/karmada/pkg/apis/cluster/v1alpha1"
 	policyv1alpha1 "github.com/karmada-io/karmada/pkg/apis/policy/v1alpha1"
@@ -591,6 +593,10 @@ func (s *Scheduler) scheduleResourceBindingWithClusterAffinity(rb *workv1alpha2.
 	patchErr := s.patchScheduleResultForResourceBinding(rb, string(placementBytes), scheduleResult.SuggestedClusters)
 	if patchErr != nil {
 		err = utilerrors.NewAggregate([]error{err, patchErr})
+		var statusErr *apierrors.StatusError
+		if errors.As(patchErr, &statusErr) && statusErr.Status().Code == http.StatusForbidden {
+			err = utilerrors.NewAggregate([]error{err, s.patchSuspensionForResourceBinding(rb, true)})
+		}
 	}
 	s.recordScheduleResultEventForResourceBinding(rb, scheduleResult.SuggestedClusters, err)
 	return err
@@ -684,6 +690,34 @@ func (s *Scheduler) patchScheduleResultForResourceBinding(oldBinding *workv1alph
 	}
 
 	klog.V(4).Infof("Patch schedule to ResourceBinding(%s/%s) succeed", oldBinding.Namespace, oldBinding.Name)
+	return nil
+}
+
+func (s *Scheduler) patchSuspensionForResourceBinding(oldBinding *workv1alpha2.ResourceBinding, SchedulingDueToQuota bool) error {
+	newBinding := oldBinding.DeepCopy()
+	if newBinding.Spec.Suspension == nil {
+		newBinding.Spec.Suspension = &workv1alpha2.Suspension{
+			SchedulingDueToQuota: ptr.To(SchedulingDueToQuota),
+		}
+	} else {
+		newBinding.Spec.Suspension.SchedulingDueToQuota = ptr.To(SchedulingDueToQuota)
+	}
+
+	patchBytes, err := helper.GenMergePatch(oldBinding, newBinding)
+	if err != nil {
+		return err
+	}
+	if len(patchBytes) == 0 {
+		return nil
+	}
+
+	_, err = s.KarmadaClient.WorkV1alpha2().ResourceBindings(newBinding.Namespace).Patch(context.TODO(), newBinding.Name, types.MergePatchType, patchBytes, metav1.PatchOptions{})
+	if err != nil {
+		klog.Errorf("Failed to patch Suspension to ResourceBinding(%s/%s): %v", oldBinding.Namespace, oldBinding.Name, err)
+		return err
+	}
+
+	klog.V(4).Infof("Patch Suspension to ResourceBinding(%s/%s) succeed", oldBinding.Namespace, oldBinding.Name)
 	return nil
 }
 
@@ -999,7 +1033,8 @@ func patchClusterResourceBindingStatus(karmadaClient karmadaclientset.Interface,
 }
 
 func (s *Scheduler) recordScheduleResultEventForResourceBinding(rb *workv1alpha2.ResourceBinding,
-	scheduleResult []workv1alpha2.TargetCluster, schedulerErr error) {
+	scheduleResult []workv1alpha2.TargetCluster, schedulerErr error,
+) {
 	if rb == nil {
 		return
 	}
@@ -1023,7 +1058,8 @@ func (s *Scheduler) recordScheduleResultEventForResourceBinding(rb *workv1alpha2
 }
 
 func (s *Scheduler) recordScheduleResultEventForClusterResourceBinding(crb *workv1alpha2.ClusterResourceBinding,
-	scheduleResult []workv1alpha2.TargetCluster, schedulerErr error) {
+	scheduleResult []workv1alpha2.TargetCluster, schedulerErr error,
+) {
 	if crb == nil {
 		return
 	}

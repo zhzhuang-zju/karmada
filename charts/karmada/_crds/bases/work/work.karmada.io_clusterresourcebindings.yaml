@@ -1304,6 +1304,12 @@ spec:
                       ResourceBinding creation. Once a ResourceBinding has been scheduled, it cannot be paused afterward, as it may
                       lead to ineffective suspension.
                     type: boolean
+                  schedulingDueToQuota:
+                    description: |-
+                      SchedulingDueToQuota controls whether scheduling is suspended due to insufficient quota.
+                      When this field is set to true, it indicates that the system automatically paused scheduling because there
+                      is not enough available quota to accommodate new resource bindings.
+                    type: boolean
                 type: object
             required:
             - resource

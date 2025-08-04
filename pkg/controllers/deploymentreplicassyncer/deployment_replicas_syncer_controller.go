@@ -156,9 +156,17 @@ func (r *DeploymentReplicasSyncer) Reconcile(ctx context.Context, req controller
 // isDeploymentStatusCollected judge whether deployment modification in spec has taken effect and its status has been collected.
 func isDeploymentStatusCollected(deployment *appsv1.Deployment, binding *workv1alpha2.ResourceBinding) bool {
 	// make sure the replicas change in deployment.spec can sync to binding.spec, otherwise retry
-	if deployment.Spec.Replicas == nil || *deployment.Spec.Replicas != binding.Spec.Replicas {
-		klog.V(4).Infof("wait until replicas of binding (%d) equal to replicas of deployment (%d)",
-			binding.Spec.Replicas, *deployment.Spec.Replicas)
+	if deployment.Spec.Replicas == nil {
+		// should never happen in normal Kubernetes operations
+		klog.ErrorS(nil, "deployment replicas is nil", "namespace", deployment.Namespace, "name", deployment.Name)
+		return false
+	}
+
+	deploymentReplicas := *deployment.Spec.Replicas
+	if deploymentReplicas != binding.Spec.Replicas {
+		klog.V(4).InfoS("wait until binding replicas are equal to deployment replicas",
+			"bindingReplicas", binding.Spec.Replicas, "deploymentReplicas", deploymentReplicas,
+			"namespace", deployment.Namespace, "deploymentName", deployment.Name, "bindingName", binding.Name)
 		return false
 	}
 

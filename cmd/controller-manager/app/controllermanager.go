@@ -246,6 +246,7 @@ func init() {
 	controllers["federatedResourceQuotaSync"] = startFederatedResourceQuotaSyncController
 	controllers["federatedResourceQuotaStatus"] = startFederatedResourceQuotaStatusController
 	controllers["federatedResourceQuotaEnforcement"] = startFederatedResourceQuotaEnforcementController
+	controllers["federatedResourceQuotaScheduling"] = startFederatedResourceQuotaSchedulingController
 	controllers["gracefulEviction"] = startGracefulEvictionController
 	controllers["applicationFailover"] = startApplicationFailoverController
 	controllers["federatedHorizontalPodAutoscaler"] = startFederatedHorizontalPodAutoscalerController
@@ -640,6 +641,20 @@ func startFederatedResourceQuotaEnforcementController(ctx controllerscontext.Con
 		Recalculation: federatedresourcequota.QuotaRecalculation{
 			ResyncPeriod: ctx.Opts.FederatedResourceQuotaOptions.ResourceQuotaSyncPeriod,
 		},
+	}
+	if err = controller.SetupWithManager(ctx.Mgr); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func startFederatedResourceQuotaSchedulingController(ctx controllerscontext.Context) (enabled bool, err error) {
+	if !features.FeatureGate.Enabled(features.FederatedQuotaEnforcement) {
+		return false, nil
+	}
+	controller := federatedresourcequota.FederatedResourceQuotaSchedulingController{
+		Client:             ctx.Mgr.GetClient(),
+		RateLimiterOptions: ctx.Opts.RateLimiterOptions,
 	}
 	if err = controller.SetupWithManager(ctx.Mgr); err != nil {
 		return false, err

@@ -319,7 +319,8 @@ func (s *Scheduler) reconcileCluster(key util.QueueKey) error {
 	}
 	return utilerrors.NewAggregate([]error{
 		s.enqueueAffectedBindings(cluster),
-		s.enqueueAffectedCRBs(cluster)},
+		s.enqueueAffectedCRBs(cluster),
+	},
 	)
 }
 

@@ -339,6 +339,12 @@ type Suspension struct {
 	// lead to ineffective suspension.
 	// +optional
 	Scheduling *bool `json:"scheduling,omitempty"`
+
+	// SchedulingDueToQuota controls whether scheduling is suspended due to insufficient quota.
+	// When this field is set to true, it indicates that the system automatically paused scheduling because there
+	// is not enough available quota to accommodate new resource bindings.
+	// +optional
+	SchedulingDueToQuota *bool `json:"schedulingDueToQuota,omitempty"`
 }
 
 // SchedulePriority represents the scheduling priority assigned to workloads.

@@ -19,6 +19,7 @@ package detector
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"regexp"
 	"sync"
 	"time"
@@ -420,7 +421,8 @@ func (d *ResourceDetector) LookForMatchedClusterPolicy(object *unstructured.Unst
 
 // ApplyPolicy starts propagate the object referenced by object key according to PropagationPolicy.
 func (d *ResourceDetector) ApplyPolicy(object *unstructured.Unstructured, objectKey keys.ClusterWideKey,
-	resourceChangeByKarmada bool, policy *policyv1alpha1.PropagationPolicy) (err error) {
+	resourceChangeByKarmada bool, policy *policyv1alpha1.PropagationPolicy,
+) (err error) {
 	start := time.Now()
 	klog.Infof("Applying policy(%s/%s) for object: %s", policy.Namespace, policy.Name, objectKey)
 	var operationResult controllerutil.OperationResult
@@ -468,6 +470,13 @@ func (d *ResourceDetector) ApplyPolicy(object *unstructured.Unstructured, object
 			bindingCopy.Labels = util.DedupeAndMergeLabels(bindingCopy.Labels, binding.Labels)
 			bindingCopy.Finalizers = util.DedupeAndMergeFinalizers(bindingCopy.Finalizers, binding.Finalizers)
 			bindingCopy.OwnerReferences = binding.OwnerReferences
+
+			if binding.Spec.ReplicaRequirements != nil && bindingCopy.Spec.ReplicaRequirements != nil && (!reflect.DeepEqual(binding.Spec.ReplicaRequirements.ResourceRequest, bindingCopy.Spec.ReplicaRequirements.ResourceRequest) && !reflect.DeepEqual(binding.Spec.Replicas, bindingCopy.Spec.Replicas)) {
+				if bindingCopy.Spec.Suspension != nil && bindingCopy.Spec.Suspension.SchedulingDueToQuota != nil {
+					bindingCopy.Spec.Suspension.SchedulingDueToQuota = ptr.To(false)
+				}
+			}
+
 			bindingCopy.Spec.Resource = binding.Spec.Resource
 			bindingCopy.Spec.ReplicaRequirements = binding.Spec.ReplicaRequirements
 			bindingCopy.Spec.Replicas = binding.Spec.Replicas
@@ -512,7 +521,8 @@ func (d *ResourceDetector) ApplyPolicy(object *unstructured.Unstructured, object
 // ApplyClusterPolicy starts propagate the object referenced by object key according to ClusterPropagationPolicy.
 // nolint:gocyclo
 func (d *ResourceDetector) ApplyClusterPolicy(object *unstructured.Unstructured, objectKey keys.ClusterWideKey,
-	resourceChangeByKarmada bool, policy *policyv1alpha1.ClusterPropagationPolicy) (err error) {
+	resourceChangeByKarmada bool, policy *policyv1alpha1.ClusterPropagationPolicy,
+) (err error) {
 	start := time.Now()
 	klog.Infof("Applying cluster policy(%s) for object: %s", policy.Name, objectKey)
 	var operationResult controllerutil.OperationResult
@@ -584,7 +594,6 @@ func (d *ResourceDetector) ApplyClusterPolicy(object *unstructured.Unstructured,
 			})
 			return err
 		})
-
 		if err != nil {
 			klog.Errorf("Failed to apply cluster policy(%s) for object: %s. error: %v", policy.Name, objectKey, err)
 			return err
@@ -637,7 +646,6 @@ func (d *ResourceDetector) ApplyClusterPolicy(object *unstructured.Unstructured,
 			})
 			return err
 		})
-
 		if err != nil {
 			klog.Errorf("Failed to apply cluster policy(%s) for object: %s. error: %v", policy.Name, objectKey, err)
 			return err
@@ -802,7 +810,8 @@ func (d *ResourceDetector) BuildResourceBinding(object *unstructured.Unstructure
 
 // BuildClusterResourceBinding builds a desired ClusterResourceBinding for object.
 func (d *ResourceDetector) BuildClusterResourceBinding(object *unstructured.Unstructured,
-	policySpec *policyv1alpha1.PropagationSpec, policyID string, policyMeta metav1.ObjectMeta) (*workv1alpha2.ClusterResourceBinding, error) {
+	policySpec *policyv1alpha1.PropagationSpec, policyID string, policyMeta metav1.ObjectMeta,
+) (*workv1alpha2.ClusterResourceBinding, error) {
 	bindingName := names.GenerateBindingName(object.GetKind(), object.GetName())
 	binding := &workv1alpha2.ClusterResourceBinding{
 		ObjectMeta: metav1.ObjectMeta{

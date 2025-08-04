@@ -447,6 +447,11 @@ func (in *Suspension) DeepCopyInto(out *Suspension) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.SchedulingDueToQuota != nil {
+		in, out := &in.SchedulingDueToQuota, &out.SchedulingDueToQuota
+		*out = new(bool)
+		**out = **in
+	}
 	return
 }
 
