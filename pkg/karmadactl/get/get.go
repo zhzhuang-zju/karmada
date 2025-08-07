@@ -528,7 +528,6 @@ func (g *CommandGetOptions) getObjInfo(mux *sync.Mutex, f cmdutil.Factory,
 		ResourceTypeOrNameArgs(true, args...).
 		ContinueOnError().
 		Latest().
-		Flatten().
 		TransformRequests(g.transformRequests).
 		Do()
 
@@ -622,7 +621,7 @@ func (g *CommandGetOptions) reconstructionRow(objs []Obj, table *metav1.Table) (
 }
 
 // reconstructObj reconstruct runtime.object row
-func (g *CommandGetOptions) reconstructObj(obj runtime.Object, mapping *meta.RESTMapping, cluster string, event string) (*metav1.Table, error) {
+func (g *CommandGetOptions) reconstructObj(obj runtime.Object, mapping *meta.RESTMapping, cluster string, event string) (runtime.Object, error) {
 	table := &metav1.Table{}
 	var allTableRows []metav1.TableRow
 
@@ -632,6 +631,13 @@ func (g *CommandGetOptions) reconstructObj(obj runtime.Object, mapping *meta.RES
 	}
 	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(unstr.Object, table); err != nil {
 		return nil, err
+	}
+
+	if len(table.Rows) == 0 {
+		if g.OutputWatchEvents {
+			obj = &metav1.WatchEvent{Type: string(watch.Added), Object: runtime.RawExtension{Object: obj}}
+		}
+		return obj, nil
 	}
 
 	for rowIdx := range table.Rows {
@@ -713,19 +719,20 @@ func (g *CommandGetOptions) watch(watchObjs []WatchObj) error {
 		}
 
 		for _, objToPrint := range objsToPrint {
-			objrow, err := g.reconstructObj(objToPrint, mapping, watchObjs[idx].Cluster, string(watch.Added))
+			printObj, err := g.reconstructObj(objToPrint, mapping, watchObjs[idx].Cluster, string(watch.Added))
 			if err != nil {
 				return err
 			}
 
-			if idx > 0 {
+			if table, ok := printObj.(*metav1.Table); ok {
 				// only print ColumnDefinitions once
-				objrow.ColumnDefinitions = nil
-			}
-
-			printObj, err := helper.ToUnstructured(objrow)
-			if err != nil {
-				return err
+				if idx > 0 {
+					table.ColumnDefinitions = nil
+				}
+				printObj, err = helper.ToUnstructured(table)
+				if err != nil {
+					return err
+				}
 			}
 
 			if err := printer.PrintObj(printObj, writer); err != nil {
@@ -783,16 +790,18 @@ func (g *CommandGetOptions) watchMultiClusterObj(watchObjs []WatchObj, mapping *
 				_, err := watchtools.UntilWithoutRetry(ctx, w, func(e watch.Event) (bool, error) {
 					objToPrint := e.Object
 
-					objrow, err := g.reconstructObj(objToPrint, mapping, watchObj.Cluster, string(e.Type))
+					printObj, err := g.reconstructObj(objToPrint, mapping, watchObj.Cluster, string(e.Type))
 					if err != nil {
 						return false, err
 					}
 					// not need to print ColumnDefinitions
-					objrow.ColumnDefinitions = nil
-
-					printObj, err := helper.ToUnstructured(objrow)
-					if err != nil {
-						return false, err
+					if table, ok := printObj.(*metav1.Table); ok {
+						// only print ColumnDefinitions once
+						table.ColumnDefinitions = nil
+						printObj, err = helper.ToUnstructured(table)
+						if err != nil {
+							return false, err
+						}
 					}
 
 					if err := printer.PrintObj(printObj, writer); err != nil {

@@ -28,12 +28,10 @@ import (
 	kubernetesfake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/cluster-bootstrap/token/api"
 
-	"github.com/karmada-io/karmada/pkg/karmadactl/options"
-	"github.com/karmada-io/karmada/pkg/karmadactl/util"
+	cmdtesting "github.com/karmada-io/karmada/pkg/karmadactl/util/testing"
 )
 
-type mockIOWriter struct {
-}
+type mockIOWriter struct{}
 
 func (m *mockIOWriter) Write(p []byte) (n int, err error) {
 	str := string(p)
@@ -54,7 +52,7 @@ func NewTestCommandTokenOptions() *CommandTokenOptions {
 }
 
 func TestNewCmdTokenCreate(t *testing.T) {
-	f := util.NewFactory(options.DefaultConfigFlags)
+	f := cmdtesting.NewTestFactory()
 	cmd := NewCmdTokenCreate(f, &mockIOWriter{}, NewTestCommandTokenOptions())
 	if cmd == nil {
 		t.Errorf("NewCmdTokenCreate() return nil, but want config")
@@ -62,7 +60,7 @@ func TestNewCmdTokenCreate(t *testing.T) {
 }
 
 func TestNewCmdTokenList(t *testing.T) {
-	f := util.NewFactory(options.DefaultConfigFlags)
+	f := cmdtesting.NewTestFactory()
 	cmd := NewCmdTokenList(f, &mockIOWriter{}, &mockIOWriter{}, NewTestCommandTokenOptions())
 	if cmd == nil {
 		t.Errorf("NewCmdTokenList() return nil, but want config")
@@ -70,7 +68,7 @@ func TestNewCmdTokenList(t *testing.T) {
 }
 
 func TestNewCmdTokenDelete(t *testing.T) {
-	f := util.NewFactory(options.DefaultConfigFlags)
+	f := cmdtesting.NewTestFactory()
 	cmd := NewCmdTokenDelete(f, &mockIOWriter{}, NewTestCommandTokenOptions())
 	if cmd == nil {
 		t.Errorf("NewCmdTokenDelete() return nil, but want config")
@@ -94,14 +92,14 @@ func TestCommandTokenOptions_runListTokens(t *testing.T) {
 	}{
 		{
 			name: "token format error and parse error",
-			//It needs special format, follow it will pass checking
+			// It needs special format, follow it will pass checking
 			tokenID:     []string{"foo0id"},
 			tokenSecret: []string{"---"},
 			wantErr:     false,
 		},
 		{
 			name: "token fmt ok and parse ok",
-			//It needs special format, follow it will pass checking
+			// It needs special format, follow it will pass checking
 			tokenID:     []string{"foo0id"},
 			tokenSecret: []string{"foo0secret0foofo"},
 			wantErr:     false,
@@ -201,7 +199,7 @@ func TestCommandTokenOptions_runDeleteTokens(t *testing.T) {
 
 func TestNewCmdToken(t *testing.T) {
 	stream := genericiooptions.IOStreams{}
-	f := util.NewFactory(options.DefaultConfigFlags)
+	f := cmdtesting.NewTestFactory()
 	cmdToken := NewCmdToken(f, "karmadactl", stream)
 	if cmdToken == nil {
 		t.Errorf("NewCmdToken() want return not nil, but return nil")
