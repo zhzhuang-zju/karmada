@@ -424,11 +424,17 @@ func TestOnAdd(t *testing.T) {
 }
 
 func TestOnUpdate(t *testing.T) {
+	lazyPolicyID := "d1eec85e-eaa4-4a34-8ab7-dfa2256a0e27"
+	lazyPolicyName := "foo"
+	lazyPolicyNamespace := "default"
+	lazyClusterPolicyID := "d1eec85e-eaa4-4a34-8ab7-dfa2256a0e28"
+	lazyClusterPolicyName := "foo-1"
 	tests := []struct {
 		name                      string
 		oldObj                    interface{}
 		newObj                    interface{}
 		expectedEnqueue           bool
+		expectedChangeByKarmada   bool
 		expectToUnstructuredError bool
 	}{
 		{
@@ -459,7 +465,8 @@ func TestOnUpdate(t *testing.T) {
 					},
 				},
 			},
-			expectedEnqueue: true,
+			expectedEnqueue:         true,
+			expectedChangeByKarmada: false,
 		},
 		{
 			name: "update without changes",
@@ -489,7 +496,8 @@ func TestOnUpdate(t *testing.T) {
 					},
 				},
 			},
-			expectedEnqueue: false,
+			expectedEnqueue:         false,
+			expectedChangeByKarmada: false,
 		},
 		{
 			name:            "invalid object",
@@ -498,7 +506,7 @@ func TestOnUpdate(t *testing.T) {
 			expectedEnqueue: false,
 		},
 		{
-			name: "change by Karmada",
+			name: "lazy policy and change by Karmada",
 			oldObj: &unstructured.Unstructured{
 				Object: map[string]interface{}{
 					"apiVersion": "apps/v1",
@@ -516,13 +524,120 @@ func TestOnUpdate(t *testing.T) {
 					"metadata": map[string]interface{}{
 						"name":      "test-deployment",
 						"namespace": "default",
+						"labels": map[string]interface{}{
+							policyv1alpha1.PropagationPolicyPermanentIDLabel: lazyPolicyID,
+						},
 						"annotations": map[string]interface{}{
-							util.PolicyPlacementAnnotation: "test",
+							util.PolicyPlacementAnnotation:                      "test",
+							policyv1alpha1.PropagationPolicyNameAnnotation:      lazyPolicyName,
+							policyv1alpha1.PropagationPolicyNamespaceAnnotation: lazyPolicyNamespace,
 						},
 					},
 				},
 			},
-			expectedEnqueue: true,
+			expectedEnqueue:         true,
+			expectedChangeByKarmada: true,
+		},
+		{
+			name: "lazy policy and not change by Karmada",
+			oldObj: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"apiVersion": "apps/v1",
+					"kind":       "Deployment",
+					"metadata": map[string]interface{}{
+						"name":      "test-deployment",
+						"namespace": "default",
+					},
+				},
+			},
+			newObj: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"apiVersion": "apps/v1",
+					"kind":       "Deployment",
+					"metadata": map[string]interface{}{
+						"name":      "test-deployment",
+						"namespace": "default",
+						"labels": map[string]interface{}{
+							policyv1alpha1.PropagationPolicyPermanentIDLabel: lazyPolicyID,
+						},
+						"annotations": map[string]interface{}{
+							policyv1alpha1.PropagationPolicyNameAnnotation:      lazyPolicyName,
+							policyv1alpha1.PropagationPolicyNamespaceAnnotation: lazyPolicyNamespace,
+						},
+					},
+					"spec": map[string]interface{}{
+						"replicas": int64(1),
+					},
+				},
+			},
+			expectedEnqueue:         true,
+			expectedChangeByKarmada: false,
+		},
+		{
+			name: "lazy cluster policy and change by Karmada",
+			oldObj: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"apiVersion": "apps/v1",
+					"kind":       "Deployment",
+					"metadata": map[string]interface{}{
+						"name":      "test-deployment",
+						"namespace": "default",
+					},
+				},
+			},
+			newObj: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"apiVersion": "apps/v1",
+					"kind":       "Deployment",
+					"metadata": map[string]interface{}{
+						"name":      "test-deployment",
+						"namespace": "default",
+						"labels": map[string]interface{}{
+							policyv1alpha1.ClusterPropagationPolicyPermanentIDLabel: lazyClusterPolicyID,
+						},
+						"annotations": map[string]interface{}{
+							util.PolicyPlacementAnnotation:                 "test",
+							policyv1alpha1.ClusterPropagationPolicyAnnotation: lazyClusterPolicyName,
+						},
+					},
+				},
+			},
+			expectedEnqueue:         true,
+			expectedChangeByKarmada: true,
+		},
+		{
+			name: "lazy cluster policy and not change by Karmada",
+			oldObj: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"apiVersion": "apps/v1",
+					"kind":       "Deployment",
+					"metadata": map[string]interface{}{
+						"name":      "test-deployment",
+						"namespace": "default",
+					},
+				},
+			},
+			newObj: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"apiVersion": "apps/v1",
+					"kind":       "Deployment",
+					"metadata": map[string]interface{}{
+						"name":      "test-deployment",
+						"namespace": "default",
+						"labels": map[string]interface{}{
+							policyv1alpha1.ClusterPropagationPolicyPermanentIDLabel: lazyClusterPolicyID,
+						},
+						"annotations": map[string]interface{}{
+							policyv1alpha1.ClusterPropagationPolicyAnnotation: lazyClusterPolicyName,
+						},
+					},
+					"spec": map[string]interface{}{
+						"replicas": int64(1),
+					},
+				},
+			},
+			expectedEnqueue:         true,
+			expectedChangeByKarmada: false,
 		},
 		{
 			name: "core v1 object",
@@ -561,6 +676,10 @@ func TestOnUpdate(t *testing.T) {
 			mockProcessor := &mockAsyncWorker{}
 			d := &ResourceDetector{
 				Processor: mockProcessor,
+				lazyActivationEnabledPolicys: map[string]struct{}{
+					lazyPolicyID:        {},
+					lazyClusterPolicyID: {},
+				},
 			}
 
 			d.OnUpdate(tt.oldObj, tt.newObj)
@@ -570,6 +689,7 @@ func TestOnUpdate(t *testing.T) {
 				assert.IsType(t, ResourceItem{}, mockProcessor.lastEnqueued, "Enqueued item should be of type ResourceItem")
 				enqueued := mockProcessor.lastEnqueued.(ResourceItem)
 				assert.Equal(t, tt.newObj, enqueued.Obj, "Enqueued object should match the new object")
+				assert.Equal(t, tt.expectedChangeByKarmada, enqueued.ResourceChangeByKarmada, "ResourceChangeByKarmada flag should match expected value")
 			} else {
 				assert.Equal(t, 0, mockProcessor.enqueueCount, "Object should not be enqueued")
 			}

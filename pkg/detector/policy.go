@@ -332,43 +332,44 @@ func (d *ResourceDetector) listCPPDerivedCRBs(policyID, policyName string) (*wor
 	return bindings, nil
 }
 
-func (d *ResourceDetector) isClaimedByLazyPolicy(obj *unstructured.Unstructured) (bool, error) {
+func (d *ResourceDetector) isClaimedByLazyPolicy(obj *unstructured.Unstructured) bool {
 	policyAnnotations := obj.GetAnnotations()
 	policyLabels := obj.GetLabels()
 	policyNamespace := util.GetAnnotationValue(policyAnnotations, policyv1alpha1.PropagationPolicyNamespaceAnnotation)
 	policyName := util.GetAnnotationValue(policyAnnotations, policyv1alpha1.PropagationPolicyNameAnnotation)
 	claimedID := util.GetLabelValue(policyLabels, policyv1alpha1.PropagationPolicyPermanentIDLabel)
 	if policyNamespace != "" && policyName != "" && claimedID != "" {
-		matchedPropagationPolicy := &policyv1alpha1.PropagationPolicy{}
-		err := d.Client.Get(context.TODO(), client.ObjectKey{Namespace: policyNamespace, Name: policyName}, matchedPropagationPolicy)
-		if err != nil {
-			if apierrors.IsNotFound(err) {
-				return false, nil
-			}
-
-			return false, err
-		}
-
-		return util.IsLazyActivationEnabled(matchedPropagationPolicy.Spec.ActivationPreference), nil
+		return d.isLazyActivationEnabledPolicy(claimedID)
 	}
 
-	policyName = util.GetAnnotationValue(policyAnnotations, policyv1alpha1.ClusterPropagationPolicyAnnotation)
-	claimedID = util.GetLabelValue(policyLabels, policyv1alpha1.ClusterPropagationPolicyPermanentIDLabel)
-	if policyName != "" && claimedID != "" {
-		matchedClusterPropagationPolicy := &policyv1alpha1.ClusterPropagationPolicy{}
-		err := d.Client.Get(context.TODO(), client.ObjectKey{Name: policyName}, matchedClusterPropagationPolicy)
-		if err != nil {
-			if apierrors.IsNotFound(err) {
-				return false, nil
-			}
-
-			return false, err
-		}
-
-		return util.IsLazyActivationEnabled(matchedClusterPropagationPolicy.Spec.ActivationPreference), nil
+	clusterPolicyName := util.GetAnnotationValue(policyAnnotations, policyv1alpha1.ClusterPropagationPolicyAnnotation)
+	clusterClaimedID := util.GetLabelValue(policyLabels, policyv1alpha1.ClusterPropagationPolicyPermanentIDLabel)
+	if clusterPolicyName != "" && clusterClaimedID != "" {
+		return d.isLazyActivationEnabledPolicy(clusterClaimedID)
 	}
 
-	return false, nil
+	return false
+}
+
+func (d *ResourceDetector) isLazyActivationEnabledPolicy(policyID string) bool {
+	d.lazyActivationLock.RLock()
+	_, exist := d.lazyActivationEnabledPolicys[policyID]
+	d.lazyActivationLock.RUnlock()
+	return exist
+}
+
+func (d *ResourceDetector) addLazyActivationEnabledPolicy(policyID string) {
+	d.lazyActivationLock.Lock()
+	defer d.lazyActivationLock.Unlock()
+
+	d.lazyActivationEnabledPolicys[policyID] = struct{}{}
+}
+
+func (d *ResourceDetector) removeLazyActivationEnabledPolicy(policyID string) {
+	d.lazyActivationLock.Lock()
+	defer d.lazyActivationLock.Unlock()
+
+	delete(d.lazyActivationEnabledPolicys, policyID)
 }
 
 // excludeClusterPolicy excludes cluster propagation policy.

@@ -95,6 +95,12 @@ type ResourceDetector struct {
 	waitingObjects map[keys.ClusterWideKey]struct{}
 	// waitingLock is the lock for waitingObjects operation.
 	waitingLock sync.RWMutex
+
+	// lazyActivationEnabledPolicys tracks of policies whose activation preference is Lazy. The key is
+	// the permanent ID of a PropagationPolicy or ClusterPropagationPolicy.
+	lazyActivationEnabledPolicys map[string]struct{}
+	// lazyActivationLock is the lock for lazyActivationEnabledPolicys operation.
+	lazyActivationLock sync.RWMutex
 	// ConcurrentPropagationPolicySyncs is the number of PropagationPolicy that are allowed to sync concurrently.
 	ConcurrentPropagationPolicySyncs int
 	// ConcurrentClusterPropagationPolicySyncs is the number of ClusterPropagationPolicy that are allowed to sync concurrently.
@@ -141,7 +147,7 @@ func (d *ResourceDetector) Start(ctx context.Context) error {
 	d.Processor.Run(ctx, d.ConcurrentResourceTemplateSyncs)
 
 	// watch and enqueue PropagationPolicy changes.
-	policyHandler := fedinformer.NewHandlerOnEvents(d.OnPropagationPolicyAdd, d.OnPropagationPolicyUpdate, nil)
+	policyHandler := fedinformer.NewHandlerOnEvents(d.OnPropagationPolicyAdd, d.OnPropagationPolicyUpdate, d.OnPropagationPolicyDelete)
 	ppInformer, err := d.ControllerRuntimeCache.GetInformer(ctx, &policyv1alpha1.PropagationPolicy{})
 	if err != nil {
 		klog.Errorf("Failed to get informer for PropagationPolicy: %v", err)
@@ -154,7 +160,7 @@ func (d *ResourceDetector) Start(ctx context.Context) error {
 	}
 
 	// watch and enqueue ClusterPropagationPolicy changes.
-	clusterPolicyHandler := fedinformer.NewHandlerOnEvents(d.OnClusterPropagationPolicyAdd, d.OnClusterPropagationPolicyUpdate, nil)
+	clusterPolicyHandler := fedinformer.NewHandlerOnEvents(d.OnClusterPropagationPolicyAdd, d.OnClusterPropagationPolicyUpdate, d.OnClusterPropagationPolicyDelete)
 	cppInformer, err := d.ControllerRuntimeCache.GetInformer(ctx, &policyv1alpha1.ClusterPropagationPolicy{})
 	if err != nil {
 		klog.Errorf("Failed to get informer for ClusterPropagationPolicy: %v", err)
@@ -343,13 +349,7 @@ func (d *ResourceDetector) OnUpdate(oldObj, newObj interface{}) {
 		return
 	}
 
-	isLazyActivation, err := d.isClaimedByLazyPolicy(unstructuredNewObj)
-	if err != nil {
-		// should never come here
-		klog.Errorf("Failed to check if the object (kind=%s, %s/%s) is bound by lazy policy. err: %v", unstructuredNewObj.GetKind(), unstructuredNewObj.GetNamespace(), unstructuredNewObj.GetName(), err)
-	}
-
-	if isLazyActivation {
+	if d.isClaimedByLazyPolicy(unstructuredNewObj) {
 		resourceItem := ResourceItem{
 			Obj:                     newRuntimeObj,
 			ResourceChangeByKarmada: eventfilter.ResourceChangeByKarmada(unstructuredOldObj, unstructuredNewObj),
@@ -900,11 +900,21 @@ func (d *ResourceDetector) GetMatching(resourceSelectors []policyv1alpha1.Resour
 
 // OnPropagationPolicyAdd handles object add event and push the object to queue.
 func (d *ResourceDetector) OnPropagationPolicyAdd(obj interface{}) {
+	policyObj := obj.(*policyv1alpha1.PropagationPolicy)
+	policyID := policyObj.Labels[policyv1alpha1.PropagationPolicyPermanentIDLabel]
+	if policyID != "" && util.IsLazyActivationEnabled(policyObj.Spec.ActivationPreference) {
+		d.addLazyActivationEnabledPolicy(policyID)
+	}
 	d.policyReconcileWorker.Enqueue(obj)
 }
 
 // OnPropagationPolicyUpdate handles object update event and push the object to queue.
 func (d *ResourceDetector) OnPropagationPolicyUpdate(oldObj, newObj interface{}) {
+	policyObj := newObj.(*policyv1alpha1.PropagationPolicy)
+	policyID := policyObj.Labels[policyv1alpha1.PropagationPolicyPermanentIDLabel]
+	if policyID != "" && util.IsLazyActivationEnabled(policyObj.Spec.ActivationPreference) {
+		d.addLazyActivationEnabledPolicy(policyID)
+	}
 	d.policyReconcileWorker.Enqueue(newObj)
 
 	// Temporary solution of corner case: After the priority(.spec.priority) of
@@ -923,10 +933,18 @@ func (d *ResourceDetector) OnPropagationPolicyUpdate(oldObj, newObj interface{})
 	// which can be used to detect priority changes during reconcile logic.
 	if features.FeatureGate.Enabled(features.PolicyPreemption) {
 		oldPolicyObj := oldObj.(*policyv1alpha1.PropagationPolicy)
-		policyObj := newObj.(*policyv1alpha1.PropagationPolicy)
 		if policyObj.ExplicitPriority() < oldPolicyObj.ExplicitPriority() {
 			d.HandleDeprioritizedPropagationPolicy(*oldPolicyObj, *policyObj)
 		}
+	}
+}
+
+// OnPropagationPolicyDelete handles object delete event.
+func (d *ResourceDetector) OnPropagationPolicyDelete(obj interface{}) {
+	policyObj := obj.(*policyv1alpha1.PropagationPolicy)
+	policyID := policyObj.Labels[policyv1alpha1.PropagationPolicyPermanentIDLabel]
+	if policyID != "" && util.IsLazyActivationEnabled(policyObj.Spec.ActivationPreference) {
+		d.removeLazyActivationEnabledPolicy(policyID)
 	}
 }
 
@@ -971,11 +989,22 @@ func (d *ResourceDetector) ReconcilePropagationPolicy(key util.QueueKey) error {
 
 // OnClusterPropagationPolicyAdd handles object add event and push the object to queue.
 func (d *ResourceDetector) OnClusterPropagationPolicyAdd(obj interface{}) {
+	policyObj := obj.(*policyv1alpha1.ClusterPropagationPolicy)
+	policyID := policyObj.Labels[policyv1alpha1.ClusterPropagationPolicyPermanentIDLabel]
+	if policyID != "" && util.IsLazyActivationEnabled(policyObj.Spec.ActivationPreference) {
+		d.addLazyActivationEnabledPolicy(policyID)
+	}
 	d.clusterPolicyReconcileWorker.Enqueue(obj)
 }
 
 // OnClusterPropagationPolicyUpdate handles object update event and push the object to queue.
 func (d *ResourceDetector) OnClusterPropagationPolicyUpdate(oldObj, newObj interface{}) {
+	policyObj := newObj.(*policyv1alpha1.ClusterPropagationPolicy)
+	policyID := policyObj.Labels[policyv1alpha1.ClusterPropagationPolicyPermanentIDLabel]
+	if policyID != "" && util.IsLazyActivationEnabled(policyObj.Spec.ActivationPreference) {
+		d.addLazyActivationEnabledPolicy(policyID)
+	}
+
 	d.clusterPolicyReconcileWorker.Enqueue(newObj)
 
 	// Temporary solution of corner case: After the priority(.spec.priority) of
@@ -994,10 +1023,18 @@ func (d *ResourceDetector) OnClusterPropagationPolicyUpdate(oldObj, newObj inter
 	// which can be used to detect priority changes during reconcile logic.
 	if features.FeatureGate.Enabled(features.PolicyPreemption) {
 		oldPolicy := oldObj.(*policyv1alpha1.ClusterPropagationPolicy)
-		policyObj := newObj.(*policyv1alpha1.ClusterPropagationPolicy)
 		if policyObj.ExplicitPriority() < oldPolicy.ExplicitPriority() {
 			d.HandleDeprioritizedClusterPropagationPolicy(*oldPolicy, *policyObj)
 		}
+	}
+}
+
+// OnClusterPropagationPolicyDelete handles object delete event.
+func (d *ResourceDetector) OnClusterPropagationPolicyDelete(obj interface{}) {
+	policyObj := obj.(*policyv1alpha1.ClusterPropagationPolicy)
+	policyID := policyObj.Labels[policyv1alpha1.ClusterPropagationPolicyPermanentIDLabel]
+	if policyID != "" && util.IsLazyActivationEnabled(policyObj.Spec.ActivationPreference) {
+		d.removeLazyActivationEnabledPolicy(policyID)
 	}
 }
 
