@@ -19,6 +19,7 @@ entries:
     type: application
     urls:
     - https://github.com/karmada-io/karmada/releases/download/v1.15.0/karmada-chart-v1.15.tgz
+    appVersion: v1.1.0
     version: v1.15
   - apiVersion: v2
     appVersion: v1.1.0
