@@ -21395,7 +21395,7 @@
       "type": "object",
       "properties": {
         "namespace": {
-          "description": "Namespace represents the resources namespaces",
+          "description": "Namespace represents the resources namespaces. Deprecated: This field is deprecated and will be removed in a future version.",
           "type": "string"
         },
         "nodeClaim": {

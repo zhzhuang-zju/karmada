@@ -30,6 +30,9 @@ type MaxAvailableReplicasRequest struct {
 	// ReplicaRequirements represents the requirements required by each replica.
 	// +required
 	ReplicaRequirements ReplicaRequirements `json:"replicaRequirements" protobuf:"bytes,2,opt,name=replicaRequirements"`
+	// Namespace represents the namespace of the workload.
+	// +optional
+	Namespace string `json:"namespace" protobuf:"bytes,3,opt,name=namespace"`
 }
 
 // NodeClaim represents the NodeAffinity, NodeSelector and Tolerations required by each replica.
@@ -59,6 +62,7 @@ type ReplicaRequirements struct {
 	ResourceRequest corev1.ResourceList `json:"resourceRequest,omitempty" protobuf:"bytes,2,rep,name=resourceRequest,casttype=k8s.io/api/core/v1.ResourceList,castkey=k8s.io/api/core/v1.ResourceName"`
 	// Namespace represents the namespaces belonged to a ResourceRequest
 	// +optional
+	// Deprecated: This field is deprecated and will be removed in a future version. Use Namespace in MaxAvailableReplicasRequest instead.
 	Namespace string `json:"namespace,omitempty" protobuf:"bytes,3,opt,name=namespace"`
 	// PriorityClassName represents the priority class name for a given ResourceRequest
 	// Resource quotas are introduced for multi tenants sharing a cluster

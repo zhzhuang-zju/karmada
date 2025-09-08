@@ -214,8 +214,9 @@ type ReplicaRequirements struct {
 	// +optional
 	ResourceRequest corev1.ResourceList `json:"resourceRequest,omitempty"`
 
-	// Namespace represents the resources namespaces
+	// Namespace represents the resources namespaces.
 	// +optional
+	// Deprecated: This field is deprecated and will be removed in a future version.
 	Namespace string `json:"namespace,omitempty"`
 
 	// PriorityClassName represents the resources priorityClassName

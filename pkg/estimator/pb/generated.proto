@@ -36,6 +36,10 @@ message MaxAvailableReplicasRequest {
   // ReplicaRequirements represents the requirements required by each replica.
   // +required
   optional ReplicaRequirements replicaRequirements = 2;
+
+  // Namespace represents the namespace of the workload.
+  // +optional
+  optional string namespace = 3;
 }
 
 // MaxAvailableReplicasResponse represents the response that sent by gRPC server to calculate max available replicas.
@@ -98,6 +102,7 @@ message ReplicaRequirements {
 
   // Namespace represents the namespaces belonged to a ResourceRequest
   // +optional
+  // Deprecated: This field is deprecated and will be removed in a future version. Use Namespace in MaxAvailableReplicasRequest instead.
   optional string namespace = 3;
 
   // PriorityClassName represents the priority class name for a given ResourceRequest

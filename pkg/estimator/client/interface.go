@@ -36,7 +36,7 @@ var (
 
 // ReplicaEstimator is an estimator which estimates the maximum replicas that can be applied to the target cluster.
 type ReplicaEstimator interface {
-	MaxAvailableReplicas(ctx context.Context, clusters []*clusterv1alpha1.Cluster, replicaRequirements *workv1alpha2.ReplicaRequirements) ([]workv1alpha2.TargetCluster, error)
+	MaxAvailableReplicas(ctx context.Context, namespace string, clusters []*clusterv1alpha1.Cluster, replicaRequirements *workv1alpha2.ReplicaRequirements) ([]workv1alpha2.TargetCluster, error)
 }
 
 // UnschedulableReplicaEstimator is an estimator which estimates the unschedulable replicas which belong to a specified workload.

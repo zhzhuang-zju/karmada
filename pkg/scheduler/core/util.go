@@ -75,7 +75,7 @@ func calAvailableReplicas(clusters []*clusterv1alpha1.Cluster, spec *workv1alpha
 	ctx := context.WithValue(context.TODO(), util.ContextKeyObject,
 		fmt.Sprintf("kind=%s, name=%s/%s", spec.Resource.Kind, spec.Resource.Namespace, spec.Resource.Name))
 	for name, estimator := range estimators {
-		res, err := estimator.MaxAvailableReplicas(ctx, clusters, spec.ReplicaRequirements)
+		res, err := estimator.MaxAvailableReplicas(ctx, spec.Resource.Namespace, clusters, spec.ReplicaRequirements)
 		if err != nil {
 			klog.Errorf("Max cluster available replicas error: %v", err)
 			continue

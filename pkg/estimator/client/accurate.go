@@ -55,6 +55,7 @@ func NewSchedulerEstimator(cache *SchedulerEstimatorCache, timeout time.Duration
 // MaxAvailableReplicas estimates the maximum replicas that can be applied to the target cluster by calling karmada-scheduler-estimator.
 func (se *SchedulerEstimator) MaxAvailableReplicas(
 	parentCtx context.Context,
+	namespace string,
 	clusters []*clusterv1alpha1.Cluster,
 	replicaRequirements *workv1alpha2.ReplicaRequirements,
 ) ([]workv1alpha2.TargetCluster, error) {
@@ -63,7 +64,7 @@ func (se *SchedulerEstimator) MaxAvailableReplicas(
 		clusterNames[i] = cluster.Name
 	}
 	return getClusterReplicasConcurrently(parentCtx, clusterNames, se.timeout, func(ctx context.Context, cluster string) (int32, error) {
-		return se.maxAvailableReplicas(ctx, cluster, replicaRequirements.DeepCopy())
+		return se.maxAvailableReplicas(ctx, namespace, cluster, replicaRequirements.DeepCopy())
 	})
 }
 
@@ -79,7 +80,7 @@ func (se *SchedulerEstimator) GetUnschedulableReplicas(
 	})
 }
 
-func (se *SchedulerEstimator) maxAvailableReplicas(ctx context.Context, cluster string, replicaRequirements *workv1alpha2.ReplicaRequirements) (int32, error) {
+func (se *SchedulerEstimator) maxAvailableReplicas(ctx context.Context, namespace, cluster string, replicaRequirements *workv1alpha2.ReplicaRequirements) (int32, error) {
 	client, err := se.cache.GetClient(cluster)
 	if err != nil {
 		return UnauthenticReplica, err
@@ -87,11 +88,11 @@ func (se *SchedulerEstimator) maxAvailableReplicas(ctx context.Context, cluster 
 
 	req := &pb.MaxAvailableReplicasRequest{
 		Cluster:             cluster,
+		Namespace:           namespace,
 		ReplicaRequirements: pb.ReplicaRequirements{},
 	}
 	if replicaRequirements != nil {
 		req.ReplicaRequirements.ResourceRequest = replicaRequirements.ResourceRequest
-		req.ReplicaRequirements.Namespace = replicaRequirements.Namespace
 		req.ReplicaRequirements.PriorityClassName = replicaRequirements.PriorityClassName
 		if replicaRequirements.NodeClaim != nil {
 			req.ReplicaRequirements.NodeClaim = &pb.NodeClaim{

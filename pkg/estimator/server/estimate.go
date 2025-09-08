@@ -47,7 +47,7 @@ func (es *AccurateSchedulerEstimatorServer) EstimateReplicas(ctx context.Context
 		return 0, nil
 	}
 
-	maxAvailableReplicas, err := es.estimateReplicas(ctx, snapShot, request.ReplicaRequirements)
+	maxAvailableReplicas, err := es.estimateReplicas(ctx, request.Namespace, snapShot, request.ReplicaRequirements)
 	if err != nil {
 		return 0, err
 	}
@@ -58,6 +58,7 @@ func (es *AccurateSchedulerEstimatorServer) EstimateReplicas(ctx context.Context
 
 func (es *AccurateSchedulerEstimatorServer) estimateReplicas(
 	ctx context.Context,
+	namespace string,
 	snapshot *schedcache.Snapshot,
 	requirements pb.ReplicaRequirements,
 ) (int32, error) {
@@ -75,7 +76,7 @@ func (es *AccurateSchedulerEstimatorServer) estimateReplicas(
 	}
 
 	var res int32
-	replicas, ret := es.estimateFramework.RunEstimateReplicasPlugins(ctx, snapshot, &requirements)
+	replicas, ret := es.estimateFramework.RunEstimateReplicasPlugins(ctx, namespace, snapshot, &requirements)
 
 	// No replicas can be scheduled on the cluster, skip further checks and return 0
 	if ret.IsUnschedulable() {

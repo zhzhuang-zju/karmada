@@ -7581,7 +7581,7 @@ func schema_pkg_apis_work_v1alpha2_ReplicaRequirements(ref common.ReferenceCallb
 					},
 					"namespace": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Namespace represents the resources namespaces",
+							Description: "Namespace represents the resources namespaces. Deprecated: This field is deprecated and will be removed in a future version.",
 							Type:        []string{"string"},
 							Format:      "",
 						},

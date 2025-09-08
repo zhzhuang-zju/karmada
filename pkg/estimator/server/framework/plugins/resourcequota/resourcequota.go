@@ -71,6 +71,7 @@ var _ framework.EstimateReplicasPlugin = &resourceQuotaEstimator{}
 // New initializes a new plugin and returns it.
 func New(fh framework.Handle) (framework.Plugin, error) {
 	enabled := features.FeatureGate.Enabled(features.ResourceQuotaEstimate)
+	klog.V(1).Infof("ResourceQuotaEstimator is enabled: %v", enabled)
 	if !enabled {
 		// Disabled, won't do anything.
 		return &resourceQuotaEstimator{}, nil
@@ -88,6 +89,7 @@ func (pl *resourceQuotaEstimator) Name() string {
 
 // Estimate the replica allowed by the ResourceQuota
 func (pl *resourceQuotaEstimator) Estimate(_ context.Context,
+	namespace string,
 	_ *schedcache.Snapshot,
 	replicaRequirements *pb.ReplicaRequirements) (int32, *framework.Result) {
 	var replica int32 = math.MaxInt32
@@ -95,7 +97,6 @@ func (pl *resourceQuotaEstimator) Estimate(_ context.Context,
 		klog.V(5).Info("Estimator Plugin", "name", Name, "enabled", pl.enabled)
 		return replica, framework.NewResult(framework.Noopperation, fmt.Sprintf("%s is disabled", pl.Name()))
 	}
-	namespace := replicaRequirements.Namespace
 	priorityClassName := replicaRequirements.PriorityClassName
 
 	rqList, err := pl.rqLister.ResourceQuotas(namespace).List(labels.Everything())
