@@ -18,11 +18,13 @@ package scheduler
 
 import (
 	"fmt"
+	"reflect"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -39,6 +41,7 @@ import (
 	"github.com/karmada-io/karmada/pkg/util"
 	"github.com/karmada-io/karmada/pkg/util/fedinformer"
 	"github.com/karmada-io/karmada/pkg/util/gclient"
+	"github.com/karmada-io/karmada/pkg/util/helper"
 )
 
 // addAllEventHandlers is a helper function used in Scheduler
@@ -164,13 +167,19 @@ func (s *Scheduler) onResourceBindingUpdate(old, cur interface{}) {
 		return
 	}
 
-	newMeta, err := meta.Accessor(cur)
+	unstructuredOldObj, err := helper.ToUnstructured(old)
 	if err != nil {
-		klog.Errorf("Failed to transform newObj as metav1.Object, error: %v", err)
+		klog.Errorf("Failed to transform oldObj, error: %v", err)
 		return
 	}
 
-	if oldMeta.GetGeneration() == newMeta.GetGeneration() {
+	unstructuredNewObj, err := helper.ToUnstructured(cur)
+	if err != nil {
+		klog.Errorf("Failed to transform newObj, error: %v", err)
+		return
+	}
+
+	if !SpecificationChanged(unstructuredOldObj, unstructuredNewObj) {
 		if oldMeta.GetNamespace() != "" {
 			klog.V(4).Infof("Ignore update event of resourceBinding %s/%s as specification no change", oldMeta.GetNamespace(), oldMeta.GetName())
 		} else {
@@ -198,6 +207,29 @@ func (s *Scheduler) onResourceBindingUpdate(old, cur interface{}) {
 		s.queue.Add(key)
 	}
 	metrics.CountSchedulerBindings(metrics.BindingUpdate)
+}
+
+// SpecificationChanged check if the specification of the given object change or not
+func SpecificationChanged(oldObj, newObj *unstructured.Unstructured) bool {
+	oldBackup := oldObj.DeepCopy()
+	newBackup := newObj.DeepCopy()
+
+	removeIgnoredFields(oldBackup, newBackup)
+
+	return !reflect.DeepEqual(oldBackup, newBackup)
+}
+
+// removeIgnoredFields Remove the status, metadata and some fields in spec that are unrelated to scheduling.
+func removeIgnoredFields(oldBackup, newBackup *unstructured.Unstructured) {
+	shouldIgnoreFields := [][]string{
+		{"status"},
+		{"metadata"},
+		{"spec", "clusters"},
+	}
+	for _, r := range shouldIgnoreFields {
+		unstructured.RemoveNestedField(oldBackup.Object, r...)
+		unstructured.RemoveNestedField(newBackup.Object, r...)
+	}
 }
 
 func (s *Scheduler) onResourceBindingRequeue(binding *workv1alpha2.ResourceBinding, event string) {
