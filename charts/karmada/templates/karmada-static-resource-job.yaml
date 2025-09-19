@@ -39,7 +39,6 @@ spec:
         - /bin/sh
         - -c
         - |
-          bash <<'EOF'
           set -ex
           kubectl rollout status deployment {{ $name }}-apiserver -n {{ $namespace }}
           kubectl apply -k /crds --kubeconfig /etc/kubeconfig
@@ -55,8 +54,6 @@ spec:
           data:
             karmadaVersion: {{ .Values.karmadaImageVersion }}
           InnerEOF
-
-          EOF
         volumeMounts:
           - name: {{ $name }}-crds-kustomization
             mountPath: /crds

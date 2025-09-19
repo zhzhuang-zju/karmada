@@ -482,10 +482,8 @@ spec:
         - /bin/sh
         - -c
         - |
-          bash <<'EOF'
           set -ex
           kubectl apply --server-side -f /opt/configs/
-          EOF
         volumeMounts:
         - name: mount
           mountPath: /opt/mount

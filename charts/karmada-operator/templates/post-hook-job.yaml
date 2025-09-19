@@ -27,10 +27,8 @@ spec:
         - /bin/sh
         - -c
         - |
-          bash <<'EOF'
           set -ex
           kubectl apply --server-side -f /crds --force-conflicts
-          EOF
         volumeMounts:
         - name: crds
           mountPath: /crds

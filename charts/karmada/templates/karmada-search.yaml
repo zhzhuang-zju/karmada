@@ -161,10 +161,8 @@ spec:
             - /bin/sh
             - -c
             - |
-              bash <<'EOF'
               set -ex
               kubectl apply -f /search-apiservice --kubeconfig /etc/kubeconfig
-              EOF
           volumeMounts:
             - name: {{ $name }}-search-apiservice
               mountPath: /search-apiservice

@@ -679,19 +679,17 @@ If none are set, outputs nothing.
     - /bin/sh
     - -c
     - |
-      bash <<'EOF'
       set -ex
 
       # here are three cases:
       # case first installation: no `cm/karmada-version` at first, so when you get it, it means `karmada-static-resource-job` finished.
       # case restart: already has `cm/karmada-version`, which means `karmada-static-resource-job` already finished.
       # case upgrading: already has `cm/karmada-version`, but it may be old version, we should wait until `.data.karmadaVersion` equal to current `.Values.karmadaImageVersion`.
-      while [[ $(kubectl --kubeconfig /etc/kubeconfig get configmap karmada-version -n {{ .Values.systemNamespace }} -o jsonpath='{.data.karmadaVersion}') != {{ .Values.karmadaImageVersion }} ]]; do
+      while ! kubectl --kubeconfig /etc/kubeconfig get configmap karmada-version -n {{ .Values.systemNamespace }} -o jsonpath='{.data.karmadaVersion}' | grep -q {{ .Values.karmadaImageVersion }}; do
         echo "wait for karmada-static-resource-job finished"; sleep 2
       done
 
       echo "karmada-static-resource-job successfully completed since expected configmap value was found"
-      EOF
   volumeMounts:
     {{- include "karmada.kubeconfig.volumeMount" .| nindent 4 }}
 {{- end -}}

@@ -49,7 +49,6 @@ spec:
         - /bin/sh
         - -c
         - |
-          bash <<'EOF'
           set -ex
 
           # The `post-install hook job` may be applied before all karmada components are ready that rely on `static-resource job`.
@@ -60,6 +59,5 @@ spec:
           done
 
           kubectl delete job {{ $name }}-static-resource -n {{ $namespace }}
-          EOF
 {{- end }}
 {{- end }}
