@@ -112,3 +112,10 @@ jobs:
           
           ct install --target-branch ${{ github.event.repository.default_branch }} --charts charts/karmada --debug --helm-extra-set-args '--set components={search,metricsAdapter,descheduler},apiServer.hostNetwork=true' --helm-extra-args "--timeout 800s" --skip-clean-up
           kubectl get pods -A
+
+      - name: Run chart-testing (upgrade)
+        run: |
+          # change the scheduler pod label to verify the upgrade works
+          ct install --upgrade --target-branch ${{ github.event.repository.default_branch }} --charts charts/karmada --debug --helm-extra-set-args '--set components={search,metricsAdapter,descheduler},apiServer.hostNetwork=true,scheduler.podLabels.foo=bar' --helm-extra-args "--timeout 800s" --skip-clean-up
+          kubectl get pods -A -l foo=bar
+          kubectl get pods -l foo=bar
