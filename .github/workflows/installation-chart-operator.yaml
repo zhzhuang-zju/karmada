@@ -113,7 +113,7 @@ jobs:
         run: |
           # edit operator replicas to test the upgrade.
           export KUBECONFIG=~/.kube/karmada.config
-          helm install karmada-operator --namespace karmada-system --create-namespace --dependency-update charts/karmada-operator --debug --set operator.replicaCount=1 --timeout 800s
+          helm upgrade karmada-operator --namespace karmada-system --create-namespace --dependency-update charts/karmada-operator --debug --set operator.replicaCount=1 --timeout 800s
           kubectl get deployment --namespace karmada-system karmada-operator
           kubectl get deployment --namespace karmada-system karmada-operator -o jsonpath='{.spec.replicas}' | grep 1
           

@@ -110,13 +110,13 @@ jobs:
           hack/setup-dev-base.sh
           export KUBECONFIG=~/.kube/karmada.config
           
-          helm install karmada --namespace karmada-system --create-namespace --dependency-update ./charts/karmada --set components={search,metricsAdapter},apiServer.hostNetwork=true --timeout 800s
+          helm install karmada --namespace karmada-system --create-namespace --dependency-update ./charts/karmada --set 'components={search,metricsAdapter},apiServer.hostNetwork=true' --timeout 800s
           kubectl get pods --namespace karmada-system
 
       - name: Run chart-testing (upgrade)
         run: |
           # add descheduler component to test the upgrade.
           export KUBECONFIG=~/.kube/karmada.config
-          helm upgrade karmada --namespace karmada-system --create-namespace --dependency-update ./charts/karmada --set components={search,metricsAdapter,descheduler},apiServer.hostNetwork=true --timeout 800s
+          helm upgrade karmada --namespace karmada-system --create-namespace --dependency-update ./charts/karmada --set 'components={search,metricsAdapter,descheduler},apiServer.hostNetwork=true' --timeout 800s
           kubectl get pods --namespace karmada-system
           kubectl get deployment --namespace karmada-system karmada-descheduler  > /dev/null
