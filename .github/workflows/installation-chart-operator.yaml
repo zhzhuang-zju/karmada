@@ -1,5 +1,5 @@
 # validate any chart changes under charts directory
-name: Chart
+name: Operator Chart
 env:
   HELM_VERSION: v3.17.3
   KUSTOMIZE_VERSION: 5.6.0
@@ -18,7 +18,7 @@ permissions:
   contents: read
 jobs:
   test-on-kubernetes-matrix:
-    name: Test on Kubernetes
+    name: Test Operator Chart on Kubernetes
     runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
@@ -66,14 +66,8 @@ jobs:
             - all.yaml
           EOF
 
-          helm template --set components={"search,descheduler,schedulerEstimator"} --dependency-update ./charts/karmada \
+          helm template --set operator.replicaCount=2 --dependency-update ./charts/karmada-operator \
             --post-renderer ./post-render.sh --debug > /dev/null
-          helm template --set components={"search,descheduler,schedulerEstimator"},certs.mode=custom --dependency-update \
-            ./charts/karmada --post-renderer ./post-render.sh --debug > /dev/null
-          helm template --set components={"search,descheduler,schedulerEstimator"},installMode=component --dependency-update \
-            ./charts/karmada --post-renderer ./post-render.sh --debug > /dev/null
-          helm template --set installMode=agent --dependency-update ./charts/karmada --post-renderer ./post-render.sh --debug > /dev/null
-          helm template --dependency-update ./charts/karmada-operator --post-renderer ./post-render.sh --debug > /dev/null
 
           rm post-render.sh all.yaml kustomization.yaml
 
@@ -95,14 +89,14 @@ jobs:
       - name: Run chart-testing (list-changed)
         id: list-changed
         run: |
-          changed=$( ct list-changed --chart-dirs ./charts/karmada --target-branch ${{ github.event.repository.default_branch }})
+          changed=$( ct list-changed --chart-dirs ./charts/karmada-operator --target-branch ${{ github.event.repository.default_branch }})
           if [[ -n "$changed" ]]; then
             echo "changed=true" >> $GITHUB_OUTPUT
           fi
 
       - name: Run chart-testing (lint)
         if: steps.list-changed.outputs.changed == 'true'
-        run: ct lint --debug --chart-dirs ./charts/karmada --check-version-increment=false --target-branch ${{ github.event.repository.default_branch }}
+        run: ct lint --chart-dirs ./charts/karmada-operator --debug --check-version-increment=false --target-branch ${{ github.event.repository.default_branch }}
 
       - name: Run chart-testing (install)
         run: |
@@ -110,13 +104,16 @@ jobs:
           hack/setup-dev-base.sh
           export KUBECONFIG=~/.kube/karmada.config
           
-          helm install karmada --namespace karmada-system --create-namespace --dependency-update ./charts/karmada --set components={search,metricsAdapter},apiServer.hostNetwork=true --timeout 800s
-          kubectl get pods --namespace karmada-system
+          
+          helm install karmada-operator --namespace karmada-system --create-namespace --dependency-update charts/karmada-operator --debug --set operator.replicaCount=2 --timeout 800s
+          kubectl get deployment --namespace karmada-system karmada-operator
+          kubectl get deployment --namespace karmada-system karmada-operator -o jsonpath='{.spec.replicas}' | grep 2
 
       - name: Run chart-testing (upgrade)
         run: |
-          # add descheduler component to test the upgrade.
+          # edit operator replicas to test the upgrade.
           export KUBECONFIG=~/.kube/karmada.config
-          helm upgrade karmada --namespace karmada-system --create-namespace --dependency-update ./charts/karmada --set components={search,metricsAdapter,descheduler},apiServer.hostNetwork=true --timeout 800s
-          kubectl get pods --namespace karmada-system
-          kubectl get deployment --namespace karmada-system karmada-descheduler  > /dev/null
+          helm install karmada-operator --namespace karmada-system --create-namespace --dependency-update charts/karmada-operator --debug --set operator.replicaCount=1 --timeout 800s
+          kubectl get deployment --namespace karmada-system karmada-operator
+          kubectl get deployment --namespace karmada-system karmada-operator -o jsonpath='{.spec.replicas}' | grep 1
+          
