@@ -183,5 +183,9 @@ func (ctrl *Controller) onKarmadaUpdate(updateEvent event.UpdateEvent) bool {
 		return true
 	}
 
-	return !reflect.DeepEqual(newObj.Spec, oldObj.Spec)
+	newCopy := newObj.DeepCopy()
+	oldCopy := oldObj.DeepCopy()
+	operatorscheme.Scheme.Default(newCopy)
+	operatorscheme.Scheme.Default(oldCopy)
+	return !reflect.DeepEqual(newCopy.Spec, oldCopy.Spec)
 }
