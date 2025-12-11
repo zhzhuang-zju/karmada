@@ -2,4 +2,4 @@
 
 > **Note:** These rules supplement the official Go style guide. Where this guide is silent, standard Go best practices apply.
 
-You can get the code style guide in https://karmada.io/docs/developers/code-style-guide.
+Please follow the coding guidelines defined in `CODE_STYLE_GUIDE.md` file located in the root of this repository.
