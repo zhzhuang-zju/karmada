@@ -8,4 +8,21 @@ Please follow the coding guidelines defined in `CODE_STYLE_GUIDE.md` file locate
 
 ## pr descriptions review
 
-Please follow the pull request template defined in `.github/PULL_REQUEST_TEMPLATE.md` and give some suggestions to the PR discription. like, if pr has a user-facing-change, but the release note part in pr discription is empty, you can point it out and give your suggestion about the release note   
+Please follow the pull request template defined in `.github/PULL_REQUEST_TEMPLATE.md`.
+
+When reviewing a PR description, please perform the following checks:
+
+1.  **PR Type Validation:**
+    *   If the labels are missing or seem incorrect based on the PR's content, suggest the correct labels.
+
+2.  **What this PR does / why we need it section:**
+    *   Verify that the "What this PR does / why we need it" section is not empty.
+    *   If this section is empty, suggest that the author provide a clear and concise description of the PR's purpose and the problem it solves.
+
+3.  **Release Note Requirement:**
+    *   Check the "Does this PR introduce a user-facing change?" section.
+    *   If the answer is "yes" or if you determine that the PR introduces a change that will be noticeable to end-users (e.g., UI changes, API modifications, behavior changes), then a release note is required.
+    *   Verify that the `release-note` block contains a clear and concise description of the change.
+    *   If the `release-note` block is empty or contains "NONE", and you believe a release note is necessary, you should:
+        *   Point out that the PR appears to have a user-facing change.
+        *   Suggest a well-written release note that accurately describes the change. The release note should follow the examples provided in the PR template.
