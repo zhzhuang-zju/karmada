@@ -479,11 +479,30 @@ type Placement struct {
 	// ClusterAffinities represents scheduling restrictions to multiple cluster
 	// groups that indicated by ClusterAffinityTerm.
 	//
-	// The scheduler will evaluate these groups one by one in the order they
-	// appear in the spec, the group that does not satisfy scheduling restrictions
-	// will be ignored which means all clusters in this group will not be selected
-	// unless it also belongs to the next group(a cluster could belong to multiple
-	// groups).
+	// ClusterAffinities supports two distinct scheduling approaches:
+	//
+	// 1. Sequential Scheduling (Multi-Group Selection):
+	//    The scheduler evaluates ClusterAffinityTerms sequentially in the order they
+	//    appear in the spec. The first group that satisfies scheduling restrictions
+	//    will be selected for workload placement. Groups that do not satisfy scheduling
+	//    restrictions will be ignored, meaning all clusters in those groups will not
+	//    be selected unless they also belong to a subsequent group (a cluster can
+	//    belong to multiple groups).
+	//
+	// 2. Cascading Scheduling (Primary-Supplement Model):
+	//    Each ClusterAffinityTerm can define supplement cluster groups through the
+	//    'supplements' field. When the primary cluster group lacks sufficient resources,
+	//    the scheduler automatically cascades to supplement cluster groups in the order
+	//    they are defined, ensuring strict priority-based resource allocation.
+	//
+	// These two approaches can be used together: multiple ClusterAffinityTerms can each
+	// have their own supplement groups, providing both sequential group selection and
+	// cascading resource allocation within each group.
+	//
+	// Note: While sequential scheduling can achieve some cascading-like behavior by
+	// declaring the same clusters across multiple ClusterAffinityTerms, it cannot
+	// guarantee the strict priority ordering that cascading scheduling provides through
+	// the supplements mechanism.
 	//
 	// If none of the groups satisfy the scheduling restrictions, then scheduling
 	// fails, which means no cluster will be selected.
@@ -493,18 +512,32 @@ type Placement struct {
 	//   2. If both ClusterAffinity and ClusterAffinities are not set, any cluster
 	//      can be scheduling candidates.
 	//
-	// Potential use case 1:
-	// The private clusters in the local data center could be the main group, and
-	// the managed clusters provided by cluster providers could be the secondary
-	// group. So that the Karmada scheduler would prefer to schedule workloads
-	// to the main group and the second group will only be considered in case of
-	// the main group does not satisfy restrictions(like, lack of resources).
+	// Potential use case 1 (Sequential Scheduling):
+	// For geographic deployment with regional exclusivity requirements, workloads must
+	// be deployed within a single region due to data sovereignty, compliance, or latency
+	// constraints. The scheduler will first attempt to place workloads in the preferred
+	// region (e.g., Asia-Pacific clusters), and only consider alternative regions
+	// (e.g., Europe or North America clusters) if the primary region cannot satisfy
+	// the scheduling requirements. Cross-region deployment is explicitly avoided to
+	// maintain data locality and regulatory compliance.
 	//
-	// Potential use case 2:
-	// For the disaster recovery scenario, the clusters could be organized to
-	// primary and backup groups, the workloads would be scheduled to primary
-	// clusters firstly, and when primary cluster fails(like data center power off),
-	// Karmada scheduler could migrate workloads to the backup clusters.
+	// Potential use case 2 (Cascading Scheduling + Elastic HPA Scenario):
+	//
+	// For hybrid cloud scenarios, on-premises clusters can serve as the primary
+	// resource pool with public cloud clusters as supplement resources. When the
+	// primary group lacks sufficient resources during traffic spikes, the scheduler
+	// automatically extends to supplement groups, enabling seamless scaling across
+	// different infrastructure tiers. During scale-down operations, replicas from
+	// supplement clusters (public cloud) are prioritized for removal before reducing
+	// replicas in the primary clusters (on-premises), maintaining cost optimization
+	// and data locality preferences.
+	//
+	// Potential use case 3 (Cascading Scheduling + Cluster Failure Recovery Scenario）:
+	// When primary clusters experience failures or become unavailable, workloads
+	// can be automatically migrated to supplement clusters to ensure business
+	// continuity. Once the primary clusters recover, workloads can be gradually
+	// migrated back from supplement clusters to primary clusters, restoring the
+	// preferred deployment topology and cost structure.
 	//
 	// +optional
 	ClusterAffinities []ClusterAffinityTerm `json:"clusterAffinities,omitempty"`
@@ -586,9 +619,51 @@ type ClusterAffinity struct {
 	ExcludeClusters []string `json:"exclude,omitempty"`
 }
 
-// ClusterAffinityTerm selects a set of cluster.
+// ClusterAffinityTerm selects a set of cluster and defines supplement cluster groups
+// for cascading cluster affinity scheduling.
+//
+// Each ClusterAffinityTerm represents a primary cluster group with optional supplement
+// cluster groups. When the primary cluster group lacks sufficient resources, the scheduler
+// will automatically cascade to supplement cluster groups in the order they are defined.
+//
+// This enables flexible resource scheduling across multiple cluster tiers, particularly
+// useful for hybrid cloud scenarios where different cluster groups have different priorities
+// or cost implications.
 type ClusterAffinityTerm struct {
 	// AffinityName is the name of the cluster group.
+	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MaxLength=32
+	// +required
+	AffinityName string `json:"affinityName"`
+
+	ClusterAffinity `json:",inline"`
+
+	// Supplements defines supplement cluster groups that can be used when the primary
+	// cluster group lacks sufficient resources. The scheduler will cascade to these
+	// supplement groups in the order they are defined.
+	//
+	// This enables cascading cluster affinity scheduling where workloads can automatically
+	// extend from primary clusters to supplement clusters based on resource availability.
+	//
+	// Example use case:
+	// Primary group: on-premises clusters (highest priority, lowest cost)
+	// Supplement groups: public cloud clusters (lower priority, higher cost)
+	// When on-premises resources are insufficient, workloads automatically extend to cloud.
+	//
+	// +optional
+	Supplements []SupplementAffinity `json:"supplements,omitempty"`
+}
+
+// SupplementAffinity defines a supplement cluster group for cascading cluster affinity scheduling.
+//
+// Supplement cluster groups are used when the primary cluster group lacks sufficient resources.
+// The scheduler will cascade to supplement groups in the order they are defined, enabling
+// automatic resource extension across different cluster tiers.
+//
+// This is particularly useful for hybrid cloud scenarios where you want to define fallback
+// cluster groups with different characteristics (e.g., cost, performance, location).
+type SupplementAffinity struct {
+	// AffinityName is the name of the supplement cluster group.
 	// +kubebuilder:validation:MinLength=1
 	// +kubebuilder:validation:MaxLength=32
 	// +required
