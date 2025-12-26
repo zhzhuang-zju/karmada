@@ -198,7 +198,7 @@ var _ = ginkgo.Describe("Base E2E: deploy a karmada instance by cmd init and do 
 
 			ginkgo.By("Enable descheduler, metrics-adapter, scheduler-estimator and search by command addons", func() {
 				cmd := framework.NewKarmadactlCommand(
-					kubeconfig, "", karmadactlPath, "", karmadactlTimeout,
+					kubeconfig, "", karmadactlPath, testNamespace, karmadactlTimeout,
 					"addons", "enable", "all",
 					"--cluster", pullModeClusterName,
 					"--karmada-kubeconfig", karmadaConfigFilePath,
@@ -209,7 +209,7 @@ var _ = ginkgo.Describe("Base E2E: deploy a karmada instance by cmd init and do 
 				gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
 
 				cmd = framework.NewKarmadactlCommand(
-					kubeconfig, "", karmadactlPath, "", karmadactlTimeout,
+					kubeconfig, "", karmadactlPath, testNamespace, karmadactlTimeout,
 					"addons", "enable", names.KarmadaSchedulerEstimatorComponentName,
 					"--cluster", pushModeClusterName,
 					"--karmada-kubeconfig", karmadaConfigFilePath,
@@ -285,7 +285,7 @@ var _ = ginkgo.Describe("Base E2E: deploy a karmada instance by cmd init and do 
 
 			ginkgo.By("Disable descheduler, metrics-adapter, scheduler-estimator and search by command addons", func() {
 				cmd := framework.NewKarmadactlCommand(
-					kubeconfig, "", karmadactlPath, "", karmadactlTimeout,
+					kubeconfig, "", karmadactlPath, testNamespace, karmadactlTimeout,
 					"addons", "disable", "all",
 					"--cluster", pullModeClusterName,
 					"--karmada-kubeconfig", karmadaConfigFilePath,
@@ -296,7 +296,7 @@ var _ = ginkgo.Describe("Base E2E: deploy a karmada instance by cmd init and do 
 				gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
 
 				cmd = framework.NewKarmadactlCommand(
-					kubeconfig, "", karmadactlPath, "", karmadactlTimeout,
+					kubeconfig, "", karmadactlPath, testNamespace, karmadactlTimeout,
 					"addons", "disable", names.KarmadaSchedulerEstimatorComponentName,
 					"--cluster", pushModeClusterName,
 					"--karmada-kubeconfig", karmadaConfigFilePath,
