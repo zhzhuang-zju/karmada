@@ -304,3 +304,20 @@ func WaitDeploymentReplicasFitWith(clusters []string, namespace, name string, ex
 		}, PollTimeout, PollInterval).Should(gomega.Equal(true))
 	})
 }
+
+// WaitDeploymentDisappear wait deployment disappear until timeout.
+func WaitDeploymentDisappear(client kubernetes.Interface, namespace, name string) {
+	klog.Infof("Waiting for deployment(%s/%s) disappears", namespace, name)
+	gomega.Eventually(func() bool {
+		_, err := client.AppsV1().Deployments(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+		if err == nil {
+			return false
+		}
+		if apierrors.IsNotFound(err) {
+			return true
+		}
+
+		klog.Errorf("Failed to get deployment(%s/%s), err: %v", namespace, name, err)
+		return false
+	}, PollTimeout, PollInterval).Should(gomega.Equal(true))
+}

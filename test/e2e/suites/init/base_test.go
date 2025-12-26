@@ -36,6 +36,7 @@ import (
 	policyv1alpha1 "github.com/karmada-io/karmada/pkg/apis/policy/v1alpha1"
 	karmada "github.com/karmada-io/karmada/pkg/generated/clientset/versioned"
 	"github.com/karmada-io/karmada/pkg/util/gclient"
+	"github.com/karmada-io/karmada/pkg/util/names"
 	"github.com/karmada-io/karmada/test/e2e/framework"
 	testhelper "github.com/karmada-io/karmada/test/helper"
 )
@@ -195,6 +196,55 @@ var _ = ginkgo.Describe("Base E2E: deploy a karmada instance by cmd init and do 
 				})
 			})
 
+			ginkgo.By("Enable descheduler, metrics-adapter, scheduler-estimator and search by command addons", func() {
+				cmd := framework.NewKarmadactlCommand(
+					kubeconfig, "", karmadactlPath, "", karmadactlTimeout,
+					"addons", "enable", "all",
+					"--cluster", pullModeClusterName,
+					"--karmada-kubeconfig", karmadaConfigFilePath,
+					"--member-kubeconfig", pullModeKubeConfigPath,
+					"--v", "4",
+				)
+				_, err := cmd.ExecOrDie()
+				gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
+
+				cmd = framework.NewKarmadactlCommand(
+					kubeconfig, "", karmadactlPath, "", karmadactlTimeout,
+					"addons", "enable", names.KarmadaSchedulerEstimatorComponentName,
+					"--cluster", pushModeClusterName,
+					"--karmada-kubeconfig", karmadaConfigFilePath,
+					"--member-kubeconfig", pushModeKubeConfigPath,
+					"--v", "4",
+				)
+				_, err = cmd.ExecOrDie()
+				gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
+			})
+
+			ginkgo.By("Wait for the addons to be ready", func() {
+				// Wait for descheduler addon ready
+				framework.WaitDeploymentFitWith(hostClient, testNamespace, names.KarmadaDeschedulerComponentName, func(deployment *appsv1.Deployment) bool {
+					return deployment.Status.ReadyReplicas == *deployment.Spec.Replicas
+				})
+
+				// Wait for metrics-adapter addon ready
+				framework.WaitDeploymentFitWith(hostClient, testNamespace, names.KarmadaMetricsAdapterComponentName, func(deployment *appsv1.Deployment) bool {
+					return deployment.Status.ReadyReplicas == *deployment.Spec.Replicas
+				})
+
+				// Wait for search addon ready
+				framework.WaitDeploymentFitWith(hostClient, testNamespace, names.KarmadaSearchComponentName, func(deployment *appsv1.Deployment) bool {
+					return deployment.Status.ReadyReplicas == *deployment.Spec.Replicas
+				})
+
+				// Wait for scheduler-estimator addon ready
+				framework.WaitDeploymentFitWith(hostClient, testNamespace, names.GenerateEstimatorDeploymentName(pullModeClusterName), func(deployment *appsv1.Deployment) bool {
+					return deployment.Status.ReadyReplicas == *deployment.Spec.Replicas
+				})
+				framework.WaitDeploymentFitWith(hostClient, testNamespace, names.GenerateEstimatorDeploymentName(pushModeClusterName), func(deployment *appsv1.Deployment) bool {
+					return deployment.Status.ReadyReplicas == *deployment.Spec.Replicas
+				})
+			})
+
 			ginkgo.By("Do a simple propagation testing", func() {
 				deploymentNamespace = "deployment-" + rand.String(RandomStrLength)
 				framework.CreateNamespace(kubeClient, testhelper.NewNamespace(deploymentNamespace))
@@ -231,6 +281,61 @@ var _ = ginkgo.Describe("Base E2E: deploy a karmada instance by cmd init and do 
 					func(*appsv1.Deployment) bool {
 						return true
 					})
+			})
+
+			ginkgo.By("Disable descheduler, metrics-adapter, scheduler-estimator and search by command addons", func() {
+				cmd := framework.NewKarmadactlCommand(
+					kubeconfig, "", karmadactlPath, "", karmadactlTimeout,
+					"addons", "disable", "all",
+					"--cluster", pullModeClusterName,
+					"--karmada-kubeconfig", karmadaConfigFilePath,
+					"--member-kubeconfig", pullModeKubeConfigPath,
+					"--v", "4",
+				)
+				_, err := cmd.ExecOrDie()
+				gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
+
+				cmd = framework.NewKarmadactlCommand(
+					kubeconfig, "", karmadactlPath, "", karmadactlTimeout,
+					"addons", "disable", names.KarmadaSchedulerEstimatorComponentName,
+					"--cluster", pushModeClusterName,
+					"--karmada-kubeconfig", karmadaConfigFilePath,
+					"--member-kubeconfig", pushModeKubeConfigPath,
+					"--v", "4",
+				)
+				_, err = cmd.ExecOrDie()
+				gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
+			})
+
+			ginkgo.By("Wait for addons to be cleaned up", func() {
+				// Wait for descheduler addon disappeared
+				framework.WaitDeploymentDisappear(hostClient, testNamespace, names.KarmadaDeschedulerComponentName)
+
+				// Wait for metrics-adapter addon ready
+				framework.WaitDeploymentDisappear(hostClient, testNamespace, names.KarmadaMetricsAdapterComponentName)
+
+				// Wait for search addon ready
+				framework.WaitDeploymentDisappear(hostClient, testNamespace, names.KarmadaSearchComponentName)
+
+				// Wait for scheduler-estimator addon ready
+				framework.WaitDeploymentDisappear(hostClient, testNamespace, names.GenerateEstimatorDeploymentName(pullModeClusterName))
+				framework.WaitDeploymentDisappear(hostClient, testNamespace, names.GenerateEstimatorDeploymentName(pushModeClusterName))
+			})
+
+			ginkgo.By("Clean up the karmada instance by command deinit", func() {
+				cmd := framework.NewKarmadactlCommand(
+					kubeconfig, "", karmadactlPath, testNamespace, karmadactlTimeout,
+					"deinit", "enable", "karmada-descheduler",
+					"--context", hostContext,
+					"--v", "4",
+				)
+				_, err := cmd.ExecOrDie()
+				gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
+			})
+
+			ginkgo.By("Check karmada instance has been cleaned up", func() {
+				framework.WaitDeploymentDisappear(hostClient, testNamespace, names.KarmadaAPIServerComponentName)
+				framework.WaitDeploymentDisappear(hostClient, testNamespace, names.KarmadaControllerManagerComponentName)
 			})
 		})
 	})
