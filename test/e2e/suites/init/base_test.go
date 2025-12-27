@@ -17,7 +17,6 @@ limitations under the License.
 package init
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -129,15 +128,6 @@ var _ = ginkgo.Describe("Base E2E: deploy a karmada instance by cmd init and do 
 					"--v", "4", pushModeClusterName)
 				_, err := cmd.ExecOrDie()
 				gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
-
-				ginkgo.DeferCleanup(func() {
-					// Unjoin the push mode cluster
-					cmd := framework.NewKarmadactlCommand(karmadaConfigFilePath, "", karmadactlPath, "", karmadactlTimeout,
-						"unjoin", "--cluster-kubeconfig", pushModeKubeConfigPath, "--cluster-context", pushModeClusterName, "--cluster-namespace", "karmada-cluster",
-						"--v", "4", pushModeClusterName)
-					_, err := cmd.ExecOrDie()
-					gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
-				})
 			})
 
 			ginkgo.By("register a pull mode cluster", func() {
@@ -172,18 +162,6 @@ var _ = ginkgo.Describe("Base E2E: deploy a karmada instance by cmd init and do 
 				)
 				_, err = cmd.ExecOrDie()
 				gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
-
-				ginkgo.DeferCleanup(func() {
-					ginkgo.By(fmt.Sprintf("Unregistering cluster: %s", pullModeClusterName), func() {
-						cmd := framework.NewKarmadactlCommand(
-							kubeconfig, "", karmadactlPath, "", karmadactlTimeout,
-							"unregister", pullModeClusterName, "--cluster-kubeconfig", pullModeKubeConfigPath,
-							"--cluster-context", pullModeClusterName, "--namespace", testNamespace,
-						)
-						_, err := cmd.ExecOrDie()
-						gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
-					})
-				})
 			})
 
 			ginkgo.By("Wait for the new cluster to be ready", func() {
@@ -197,12 +175,20 @@ var _ = ginkgo.Describe("Base E2E: deploy a karmada instance by cmd init and do 
 			})
 
 			ginkgo.By("Enable descheduler, metrics-adapter, scheduler-estimator and search by command addons", func() {
+				// Command "enable all" means enable all addons including descheduler, metrics-adapter, search and scheduler-estimator.
+				// But each time only one scheduler-estimator can be enabled for one cluster. So, we need to enable
+				// scheduler-estimator twice for push mode cluster and pull mode cluster respectively.
 				cmd := framework.NewKarmadactlCommand(
 					kubeconfig, "", karmadactlPath, testNamespace, karmadactlTimeout,
 					"addons", "enable", "all",
 					"--cluster", pullModeClusterName,
 					"--karmada-kubeconfig", karmadaConfigFilePath,
 					"--member-kubeconfig", pullModeKubeConfigPath,
+					"--karmada-descheduler-image", karmadaDeschedulerImage,
+					"--karmada-metrics-adapter-image", karmadaMetricsAdapterImage,
+					"--karmada-search-image", karmadaSearchImage,
+					"--karmada-scheduler-estimator-image", karmadaSchedulerEstimatorImage,
+					"--member-context", pullModeClusterName,
 					"--v", "4",
 				)
 				_, err := cmd.ExecOrDie()
@@ -214,6 +200,8 @@ var _ = ginkgo.Describe("Base E2E: deploy a karmada instance by cmd init and do 
 					"--cluster", pushModeClusterName,
 					"--karmada-kubeconfig", karmadaConfigFilePath,
 					"--member-kubeconfig", pushModeKubeConfigPath,
+					"--karmada-scheduler-estimator-image", karmadaSchedulerEstimatorImage,
+					"--member-context", pushModeClusterName,
 					"--v", "4",
 				)
 				_, err = cmd.ExecOrDie()
@@ -266,13 +254,9 @@ var _ = ginkgo.Describe("Base E2E: deploy a karmada instance by cmd init and do 
 				})
 
 				framework.CreateDeployment(kubeClient, deployment)
-				ginkgo.DeferCleanup(func() {
-					framework.RemoveDeployment(kubeClient, deploymentNamespace, deploymentName)
-				})
+				defer framework.RemoveDeployment(kubeClient, deploymentNamespace, deploymentName)
 				framework.CreatePropagationPolicy(karmadaClient, policy)
-				ginkgo.DeferCleanup(func() {
-					framework.RemovePropagationPolicy(karmadaClient, deploymentNamespace, policyName)
-				})
+				defer framework.RemovePropagationPolicy(karmadaClient, deploymentNamespace, policyName)
 				framework.WaitDeploymentFitWith(pushModeClusterClient, deployment.Namespace, deployment.Name,
 					func(*appsv1.Deployment) bool {
 						return true
@@ -284,12 +268,15 @@ var _ = ginkgo.Describe("Base E2E: deploy a karmada instance by cmd init and do 
 			})
 
 			ginkgo.By("Disable descheduler, metrics-adapter, scheduler-estimator and search by command addons", func() {
+				// Command "disable all" means disable all addons including descheduler, metrics-adapter, search and scheduler-estimator.
+				// But each time only one scheduler-estimator can be disabled for one cluster. So, we need to disable
+				// scheduler-estimator twice for push mode cluster and pull mode cluster respectively.
 				cmd := framework.NewKarmadactlCommand(
 					kubeconfig, "", karmadactlPath, testNamespace, karmadactlTimeout,
 					"addons", "disable", "all",
 					"--cluster", pullModeClusterName,
 					"--karmada-kubeconfig", karmadaConfigFilePath,
-					"--member-kubeconfig", pullModeKubeConfigPath,
+					"-f", // to skip confirmation prompt
 					"--v", "4",
 				)
 				_, err := cmd.ExecOrDie()
@@ -300,7 +287,7 @@ var _ = ginkgo.Describe("Base E2E: deploy a karmada instance by cmd init and do 
 					"addons", "disable", names.KarmadaSchedulerEstimatorComponentName,
 					"--cluster", pushModeClusterName,
 					"--karmada-kubeconfig", karmadaConfigFilePath,
-					"--member-kubeconfig", pushModeKubeConfigPath,
+					"-f", // to skip confirmation prompt
 					"--v", "4",
 				)
 				_, err = cmd.ExecOrDie()
@@ -322,10 +309,26 @@ var _ = ginkgo.Describe("Base E2E: deploy a karmada instance by cmd init and do 
 				framework.WaitDeploymentDisappear(hostClient, testNamespace, names.GenerateEstimatorDeploymentName(pushModeClusterName))
 			})
 
+			ginkgo.By("Unjoin member clusters", func() {
+				cmd := framework.NewKarmadactlCommand(karmadaConfigFilePath, "", karmadactlPath, "", karmadactlTimeout,
+					"unjoin", "--cluster-kubeconfig", pushModeKubeConfigPath, "--cluster-context", pushModeClusterName, "--cluster-namespace", "karmada-cluster",
+					"--v", "4", pushModeClusterName)
+				_, err := cmd.ExecOrDie()
+				gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
+
+				cmd = framework.NewKarmadactlCommand(
+					kubeconfig, "", karmadactlPath, "", karmadactlTimeout,
+					"unregister", pullModeClusterName, "--cluster-kubeconfig", pullModeKubeConfigPath,
+					"--cluster-context", pullModeClusterName, "--namespace", testNamespace,
+				)
+				_, err = cmd.ExecOrDie()
+				gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
+			})
+
 			ginkgo.By("Clean up the karmada instance by command deinit", func() {
 				cmd := framework.NewKarmadactlCommand(
 					kubeconfig, "", karmadactlPath, testNamespace, karmadactlTimeout,
-					"deinit", "enable", "karmada-descheduler",
+					"deinit", "-f", // to skip confirmation prompt
 					"--context", hostContext,
 					"--v", "4",
 				)
