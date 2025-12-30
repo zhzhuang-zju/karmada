@@ -1,0 +1,33 @@
+name: Sync Docs to Website
+
+on:
+  push:
+    paths:
+      - 'api/openapi-spec/swagger.json' 
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout website repo
+        uses: actions/checkout@v6
+        with:
+          repository: zhzhuang-zju/website
+          token: ${{ secrets.WEBSITE_REPO_TOKEN }}
+
+      - name: create branch and commit changes
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          BRANCH="api-reference-${{ github.sha }}"
+          git checkout -b $BRANCH
+          git add .
+          git commit -m "Update api reference" || echo "No changes to commit"
+          git push origin $BRANCH
+    
+      - name: create pull request
+        env:
+          GH_TOKEN: ${{ secrets.WEBSITE_REPO_TOKEN }}  
+        run: |
+          BRANCH="api-reference-${{ github.sha }}"
+          gh pr create --base main --head $BRANCH --title "Update api reference" --body "Automated api reference update"
