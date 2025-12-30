@@ -252,7 +252,7 @@
     },
     "/apis/apps.karmada.io/v1alpha1/workloadrebalancers": {
       "get": {
-        "description": "list or watch objects of kind WorkloadRebalancer",
+        "description": "list or watch objects of kind WorkloadRebalancer temp",
         "consumes": [
           "*/*"
         ],
