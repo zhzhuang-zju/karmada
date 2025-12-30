@@ -102,7 +102,7 @@
     },
     "/apis/apps.karmada.io/v1alpha1/watch/workloadrebalancers": {
       "get": {
-        "description": "watch individual changes to a list of WorkloadRebalancer. deprecated: use the 'watch' parameter with a list operation instead.",
+        "description": "watch individual changes to a list of WorkloadRebalancer. deprecated: use the 'watch' parameter with a list operation instead test.",
         "consumes": [
           "*/*"
         ],
