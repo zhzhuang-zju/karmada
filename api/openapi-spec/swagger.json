@@ -12,7 +12,7 @@
   "paths": {
     "/apis/": {
       "get": {
-        "description": "get available API versions test",
+        "description": "get available API versions test round1",
         "consumes": [
           "application/json",
           "application/yaml",
