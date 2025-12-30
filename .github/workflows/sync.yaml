@@ -14,7 +14,11 @@ jobs:
         with:
           repository: zhzhuang-zju/website
           token: ${{ secrets.WEBSITE_REPO_TOKEN }}
-
+      - name: generate new api reference
+        run: |
+          cd infra/gen-resourcesdocs
+          hack/reference-api.sh
+          cd -
       - name: create branch and commit changes
         run: |
           git config --global user.name "GitHub Actions"
