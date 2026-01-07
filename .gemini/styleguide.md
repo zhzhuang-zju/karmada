@@ -4,4 +4,4 @@
 
 > **Note:** These rules supplement the official Go style guide. Where this guide is silent, standard Go best practices apply.
 
-Please follow the coding guidelines defined in `.github/CODE_STYLE_GUIDE.md`.
+Please follow the coding guidelines defined in the `CODE_STYLE_GUIDE.md` file, which is located in the `.github/` directory of this repository. 
