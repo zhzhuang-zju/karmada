@@ -1,5 +1,5 @@
 Karmada is primarily developed in Go and follows the standard Go community coding conventions. Automated style checks are
-enforced via [golangci-lint](https://github.com/karmada-io/karmada/blob/e2c4b596a5da442fc0dbeab9f9063d8db8669208/.github/workflows/ci.yml#L18-L35).
+enforced via [golangci-lint](https://github.com/karmada-io/karmada/blob/master/.github/workflows/ci.yml#L18-L35).
 However, the resulting code can still look and feel very differently among different developers. To ensure consistency
 across the codebase, this guide defines additional rules beyond linter defaults.
 
@@ -59,7 +59,7 @@ if !c.Cluster().DeletionTimestamp.IsZero() {
 
 - Any struct that explicitly implements an interface must include a compile-time interface compliance check.
 
-using the following pattern:
+Using the following pattern:
 ```go
 var _ InterfaceName = &StructName{}
 ```
@@ -112,7 +112,7 @@ func Foo(bar string, baz int) error
 - The random numbers used in cryptographic algorithms must be secure random numbers in the cryptographic sense.
 - It is prohibited to print authentication credentials (passwords/private keys/pre-shared keys) in plain text in system-stored logs, debugging information, and error prompts.
 
-## CHANGELOG(Release Notes)
+## CHANGELOG (Release Notes)
 
 ### Path
 The `CHANGELOG` files are located under `docs/CHANGELOG/` in the Karmada repository.
