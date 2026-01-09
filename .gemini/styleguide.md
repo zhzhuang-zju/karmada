@@ -1,1 +1,1 @@
-Gemini must follow the coding guidelines defined in `CODE_STYLE_GUIDE.md` file located in this repository. If the content is unavailable, gemini must give feedback to notify user.
+Gemini must follow the coding guidelines defined in `CODE_STYLE_GUIDE.md` file located in this repository. If the content is unavailable, gemini must give feedback to notify user: the file is not found or gemini can find this file but cannot get its content.
