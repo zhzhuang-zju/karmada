@@ -38,6 +38,8 @@ const (
 
 	// MaxClusterScore is the maximum score a Score plugin is expected to return.
 	MaxClusterScore int64 = 100
+
+	TierBaseScore int64 = 100000000
 )
 
 // Framework manages the set of plugins in use by the scheduling framework.

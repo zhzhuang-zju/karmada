@@ -95,6 +95,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/karmada-io/karmada/pkg/apis/networking/v1alpha1.MultiClusterServiceList":                 schema_pkg_apis_networking_v1alpha1_MultiClusterServiceList(ref),
 		"github.com/karmada-io/karmada/pkg/apis/networking/v1alpha1.MultiClusterServiceSpec":                 schema_pkg_apis_networking_v1alpha1_MultiClusterServiceSpec(ref),
 		"github.com/karmada-io/karmada/pkg/apis/networking/v1alpha1.ServiceLocation":                         schema_pkg_apis_networking_v1alpha1_ServiceLocation(ref),
+		"github.com/karmada-io/karmada/pkg/apis/policy/v1alpha1.AffinityStrategy":                            schema_pkg_apis_policy_v1alpha1_AffinityStrategy(ref),
 		"github.com/karmada-io/karmada/pkg/apis/policy/v1alpha1.ApplicationFailoverBehavior":                 schema_pkg_apis_policy_v1alpha1_ApplicationFailoverBehavior(ref),
 		"github.com/karmada-io/karmada/pkg/apis/policy/v1alpha1.ClusterAffinity":                             schema_pkg_apis_policy_v1alpha1_ClusterAffinity(ref),
 		"github.com/karmada-io/karmada/pkg/apis/policy/v1alpha1.ClusterAffinityTerm":                         schema_pkg_apis_policy_v1alpha1_ClusterAffinityTerm(ref),
@@ -3554,6 +3555,25 @@ func schema_pkg_apis_networking_v1alpha1_ServiceLocation(ref common.ReferenceCal
 	}
 }
 
+func schema_pkg_apis_policy_v1alpha1_AffinityStrategy(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"mode": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Mode defines the scheduling mode",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
 func schema_pkg_apis_policy_v1alpha1_ApplicationFailoverBehavior(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -5061,11 +5081,17 @@ func schema_pkg_apis_policy_v1alpha1_Placement(ref common.ReferenceCallback) com
 							Ref:         ref("github.com/karmada-io/karmada/pkg/apis/policy/v1alpha1.ReplicaSchedulingStrategy"),
 						},
 					},
+					"affinityStrategy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "AffinityStrategy defines how cluster affinities are evaluated",
+							Ref:         ref("github.com/karmada-io/karmada/pkg/apis/policy/v1alpha1.AffinityStrategy"),
+						},
+					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/karmada-io/karmada/pkg/apis/policy/v1alpha1.ClusterAffinity", "github.com/karmada-io/karmada/pkg/apis/policy/v1alpha1.ClusterAffinityTerm", "github.com/karmada-io/karmada/pkg/apis/policy/v1alpha1.ReplicaSchedulingStrategy", "github.com/karmada-io/karmada/pkg/apis/policy/v1alpha1.SpreadConstraint", "k8s.io/api/core/v1.Toleration"},
+			"github.com/karmada-io/karmada/pkg/apis/policy/v1alpha1.AffinityStrategy", "github.com/karmada-io/karmada/pkg/apis/policy/v1alpha1.ClusterAffinity", "github.com/karmada-io/karmada/pkg/apis/policy/v1alpha1.ClusterAffinityTerm", "github.com/karmada-io/karmada/pkg/apis/policy/v1alpha1.ReplicaSchedulingStrategy", "github.com/karmada-io/karmada/pkg/apis/policy/v1alpha1.SpreadConstraint", "k8s.io/api/core/v1.Toleration"},
 	}
 }
 

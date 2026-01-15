@@ -521,6 +521,17 @@ type Placement struct {
 	// when propagating resources that have replicas in spec (e.g. deployments, statefulsets) to member clusters.
 	// +optional
 	ReplicaScheduling *ReplicaSchedulingStrategy `json:"replicaScheduling,omitempty"`
+	// AffinityStrategy defines how cluster affinities are evaluated
+	// +optional
+	AffinityStrategy *AffinityStrategy `json:"affinityStrategy,omitempty"`
+}
+
+type AffinityStrategy struct {
+	// Mode defines the scheduling mode
+	// +kubebuilder:validation:Enum=Exclusive;Cascade
+	// +kubebuilder:default=Exclusive
+	// +optional
+	Mode string `json:"mode,omitempty"`
 }
 
 // SpreadFieldValue is the type to define valid values for SpreadConstraint.SpreadByField

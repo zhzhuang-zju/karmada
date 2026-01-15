@@ -179,6 +179,7 @@ func SpreadReplicasByTargetClusters(numReplicas int32, tcs, init []workv1alpha2.
 	weightList := GetStaticWeightInfoListByTargetClusters(tcs, init)
 	disp := NewDispenser(numReplicas, init, uuid)
 	disp.AllocateByWeight(weightList)
+	klog.Infof("3333333333333333333333 %+v", disp.Result)
 	return disp.Result
 }
 

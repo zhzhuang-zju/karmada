@@ -609,33 +609,41 @@ func (s *Scheduler) scheduleResourceBindingWithClusterAffinities(rb *workv1alpha
 	var (
 		scheduleResult core.ScheduleResult
 		firstErr       error
+		updatedStatus  *workv1alpha2.ResourceBindingStatus
+		affinityIndex  int
 	)
 
-	affinityIndex := getAffinityIndex(rb.Spec.Placement.ClusterAffinities, rb.Status.SchedulerObservedAffinityName)
-	updatedStatus := rb.Status.DeepCopy()
-	for affinityIndex < len(rb.Spec.Placement.ClusterAffinities) {
-		klog.V(4).Infof("Schedule ResourceBinding(%s/%s) with clusterAffiliates index(%d)", rb.Namespace, rb.Name, affinityIndex)
-		updatedStatus.SchedulerObservedAffinityName = rb.Spec.Placement.ClusterAffinities[affinityIndex].AffinityName
-		scheduleResult, err = s.Algorithm.Schedule(context.TODO(), &rb.Spec, updatedStatus, &core.ScheduleAlgorithmOption{EnableEmptyWorkloadPropagation: s.enableEmptyWorkloadPropagation})
-		if err == nil {
-			break
-		}
+	if rb.Spec.Placement.AffinityStrategy.Mode == "Cascade" {
+		updatedStatus = rb.Status.DeepCopy()
+		scheduleResult, firstErr = s.Algorithm.Schedule(context.TODO(), &rb.Spec, &rb.Status, &core.ScheduleAlgorithmOption{EnableEmptyWorkloadPropagation: s.enableEmptyWorkloadPropagation})
+	} else {
+		affinityIndex = getAffinityIndex(rb.Spec.Placement.ClusterAffinities, rb.Status.SchedulerObservedAffinityName)
+		updatedStatus = rb.Status.DeepCopy()
+		for affinityIndex < len(rb.Spec.Placement.ClusterAffinities) {
+			klog.V(4).Infof("Schedule ResourceBinding(%s/%s) with clusterAffiliates index(%d)", rb.Namespace, rb.Name, affinityIndex)
+			updatedStatus.SchedulerObservedAffinityName = rb.Spec.Placement.ClusterAffinities[affinityIndex].AffinityName
+			scheduleResult, err = s.Algorithm.Schedule(context.TODO(), &rb.Spec, updatedStatus, &core.ScheduleAlgorithmOption{EnableEmptyWorkloadPropagation: s.enableEmptyWorkloadPropagation})
+			if err == nil {
+				break
+			}
 
-		// obtain to err of the first scheduling
-		if firstErr == nil {
-			firstErr = err
-		}
+			// obtain to err of the first scheduling
+			if firstErr == nil {
+				firstErr = err
+			}
 
-		err = fmt.Errorf("failed to schedule ResourceBinding(%s/%s) with clusterAffiliates index(%d): %v", rb.Namespace, rb.Name, affinityIndex, err)
-		klog.Error(err)
-		s.recordScheduleResultEventForResourceBinding(rb, nil, err)
-		affinityIndex++
+			err = fmt.Errorf("failed to schedule ResourceBinding(%s/%s) with clusterAffiliates index(%d): %v", rb.Namespace, rb.Name, affinityIndex, err)
+			klog.Error(err)
+			s.recordScheduleResultEventForResourceBinding(rb, nil, err)
+			affinityIndex++
+		}
 	}
 
-	if affinityIndex >= len(rb.Spec.Placement.ClusterAffinities) {
+	if affinityIndex >= len(rb.Spec.Placement.ClusterAffinities) || firstErr != nil {
 		klog.Errorf("Failed to schedule ResourceBinding(%s/%s) with all ClusterAffinities.", rb.Namespace, rb.Name)
-
-		updatedStatus.SchedulerObservedAffinityName = rb.Status.SchedulerObservedAffinityName
+		if affinityIndex >= len(rb.Spec.Placement.ClusterAffinities) {
+			updatedStatus.SchedulerObservedAffinityName = rb.Status.SchedulerObservedAffinityName
+		}
 
 		var fitErr *framework.FitError
 		if !errors.As(firstErr, &fitErr) {

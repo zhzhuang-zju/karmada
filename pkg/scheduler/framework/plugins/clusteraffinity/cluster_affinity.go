@@ -54,22 +54,29 @@ func (p *ClusterAffinity) Filter(
 	bindingStatus *workv1alpha2.ResourceBindingStatus,
 	cluster *clusterv1alpha1.Cluster,
 ) *framework.Result {
-	var affinity *policyv1alpha1.ClusterAffinity
+	var affinities []*policyv1alpha1.ClusterAffinity
 	if bindingSpec.Placement.ClusterAffinity != nil {
-		affinity = bindingSpec.Placement.ClusterAffinity
+		affinities = append(affinities, bindingSpec.Placement.ClusterAffinity)
+	} else if bindingSpec.Placement.AffinityStrategy.Mode == "Cascade" {
+		for index:= range bindingSpec.Placement.ClusterAffinities {
+			affinities = append(affinities, &bindingSpec.Placement.ClusterAffinities[index].ClusterAffinity)
+		}
 	} else {
 		for index, term := range bindingSpec.Placement.ClusterAffinities {
 			if term.AffinityName == bindingStatus.SchedulerObservedAffinityName {
-				affinity = &bindingSpec.Placement.ClusterAffinities[index].ClusterAffinity
+				affinities = append(affinities, &bindingSpec.Placement.ClusterAffinities[index].ClusterAffinity)
 				break
 			}
 		}
 	}
 
-	if affinity != nil {
-		if util.ClusterMatches(cluster, *affinity) {
-			return framework.NewResult(framework.Success)
+	if affinities != nil {
+		for _, affinity := range affinities {
+			if util.ClusterMatches(cluster, *affinity) {
+				return framework.NewResult(framework.Success)
+			}
 		}
+
 		return framework.NewResult(framework.Unschedulable, "cluster(s) did not match the placement cluster affinity constraint")
 	}
 
@@ -79,7 +86,16 @@ func (p *ClusterAffinity) Filter(
 
 // Score calculates the score on the candidate cluster.
 func (p *ClusterAffinity) Score(_ context.Context,
-	_ *workv1alpha2.ResourceBindingSpec, _ *clusterv1alpha1.Cluster) (int64, *framework.Result) {
+	spec *workv1alpha2.ResourceBindingSpec, cluster *clusterv1alpha1.Cluster) (int64, *framework.Result) {
+	if spec.Placement.ClusterAffinity == nil && spec.Placement.ClusterAffinities != nil && spec.Placement.AffinityStrategy.Mode == "Cascade" {
+		tiers := len(spec.Placement.ClusterAffinities)
+		for index, term := range spec.Placement.ClusterAffinities {
+			if util.ClusterMatches(cluster, term.ClusterAffinity) {
+				return int64(tiers-index) * framework.TierBaseScore, framework.NewResult(framework.Success)
+			}
+		}
+	}
+
 	return framework.MinClusterScore, framework.NewResult(framework.Success)
 }
 
