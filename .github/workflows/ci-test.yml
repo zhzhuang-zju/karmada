@@ -27,6 +27,7 @@ jobs:
       - name: checkout code
         uses: actions/checkout@v6
         with:
+          repository: karmada-io/karmada
           # Number of commits to fetch. 0 indicates all history for all branches and tags.
           # We need to guess version via git tags.
           fetch-depth: 0
@@ -68,6 +69,7 @@ jobs:
       - name: checkout code
         uses: actions/checkout@v6
         with:
+          repository: karmada-io/karmada
           # Number of commits to fetch. 0 indicates all history for all branches and tags.
           # We need to guess version via git tags.
           fetch-depth: 0
