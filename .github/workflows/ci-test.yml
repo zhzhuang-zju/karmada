@@ -15,7 +15,6 @@ concurrency:
 jobs:
   e2e:
     name: e2e test
-    needs: build
     runs-on: macos-14
     strategy:
       fail-fast: false
@@ -57,7 +56,6 @@ concurrency:
 jobs:
   e2e:
     name: e2e test
-    needs: build
     runs-on: macos-13
     strategy:
       fail-fast: false
