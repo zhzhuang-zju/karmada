@@ -1,4 +1,4 @@
-name: CI MacOS-ARM Workflow
+name: CI MacOS-INTEL Workflow
 on:
   # Run this workflow every time a new commit pushed to upstream/fork repository.
   # Run workflow on fork repository will help contributors find and resolve issues before sending a PR.
@@ -15,7 +15,7 @@ concurrency:
 jobs:
   e2e:
     name: e2e test
-    runs-on: macos-14
+    runs-on: macos-13
     strategy:
       fail-fast: false
       matrix:
@@ -35,7 +35,7 @@ jobs:
         run: |
           brew install docker
           brew install colima
-          colima start --arch arm64
+          colima start --arch x86_64
       - name: install Go
         uses: actions/setup-go@v6
         with:
@@ -43,4 +43,5 @@ jobs:
       - name: setup e2e test environment
         run: |
           export CLUSTER_VERSION=kindest/node:${{ matrix.k8s }}
+          export KUBE_CACHE_MUTATION_DETECTOR=true
           hack/local-up-karmada.sh
