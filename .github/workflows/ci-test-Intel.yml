@@ -15,7 +15,7 @@ concurrency:
 jobs:
   e2e:
     name: e2e test
-    runs-on: macos-13
+    runs-on: macos-15-intel
     strategy:
       fail-fast: false
       matrix:
