@@ -32,6 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
@@ -92,7 +93,7 @@ type ResourceDetector struct {
 	RESTMapper meta.RESTMapper
 
 	// waitingObjects tracks of objects which haven't been propagated yet as lack of appropriate policies.
-	waitingObjects map[keys.ClusterWideKey]struct{}
+	waitingObjects map[schema.GroupVersionKind]map[string]map[keys.ClusterWideKey]struct{}
 	// waitingLock is the lock for waitingObjects operation.
 	waitingLock sync.RWMutex
 	// ConcurrentPropagationPolicySyncs is the number of PropagationPolicy that are allowed to sync concurrently.
@@ -111,7 +112,7 @@ type ResourceDetector struct {
 // Start runs the detector, never stop until context canceled.
 func (d *ResourceDetector) Start(ctx context.Context) error {
 	klog.Infof("Starting resource detector.")
-	d.waitingObjects = make(map[keys.ClusterWideKey]struct{})
+	d.waitingObjects = make(map[schema.GroupVersionKind]map[string]map[keys.ClusterWideKey]struct{})
 
 	// setup policy reconcile worker
 	policyWorkerOptions := util.Options{
@@ -907,8 +908,21 @@ func (d *ResourceDetector) BuildClusterResourceBinding(object *unstructured.Unst
 // isWaiting indicates if the object is in waiting list.
 func (d *ResourceDetector) isWaiting(objectKey keys.ClusterWideKey) bool {
 	d.waitingLock.RLock()
-	_, ok := d.waitingObjects[objectKey]
-	d.waitingLock.RUnlock()
+	defer d.waitingLock.RUnlock()
+
+	gvk := objectKey.GroupVersionKind()
+	namespace := objectKey.Namespace
+
+	nsObjects, ok := d.waitingObjects[gvk]
+	if !ok {
+		return false
+	}
+	objects, ok := nsObjects[namespace]
+	if !ok {
+		return false
+	}
+
+	_, ok = objects[objectKey]
 	return ok
 }
 
@@ -917,7 +931,16 @@ func (d *ResourceDetector) AddWaiting(objectKey keys.ClusterWideKey) {
 	d.waitingLock.Lock()
 	defer d.waitingLock.Unlock()
 
-	d.waitingObjects[objectKey] = struct{}{}
+	gvk := objectKey.GroupVersionKind()
+	namespace := objectKey.Namespace
+	if d.waitingObjects[gvk] == nil {
+		d.waitingObjects[gvk] = make(map[string]map[keys.ClusterWideKey]struct{})
+	}
+	if d.waitingObjects[gvk][namespace] == nil {
+		d.waitingObjects[gvk][namespace] = make(map[keys.ClusterWideKey]struct{})
+	}
+
+	d.waitingObjects[gvk][namespace][objectKey] = struct{}{}
 	klog.V(1).Infof("Add object(%s) to waiting list, length of list is: %d", objectKey.String(), len(d.waitingObjects))
 }
 
@@ -926,7 +949,27 @@ func (d *ResourceDetector) RemoveWaiting(objectKey keys.ClusterWideKey) {
 	d.waitingLock.Lock()
 	defer d.waitingLock.Unlock()
 
-	delete(d.waitingObjects, objectKey)
+	gvk := objectKey.GroupVersionKind()
+	namespace := objectKey.Namespace
+
+	nsObjects, ok := d.waitingObjects[gvk]
+	if !ok {
+		return
+	}
+	objects, ok := nsObjects[namespace]
+	if !ok {
+		return
+	}
+
+	delete(objects, objectKey)
+
+	if len(objects) == 0 {
+		delete(nsObjects, namespace)
+	}
+
+	if len(nsObjects) == 0 {
+		delete(d.waitingObjects, gvk)
+	}
 }
 
 // GetMatching gets objects keys in waiting list that matches one of resource selectors.
@@ -934,9 +977,37 @@ func (d *ResourceDetector) GetMatching(resourceSelectors []policyv1alpha1.Resour
 	d.waitingLock.RLock()
 	defer d.waitingLock.RUnlock()
 
-	var matchedResult []keys.ClusterWideKey
+	matchedResult := sets.New[keys.ClusterWideKey]()
 
-	for waitKey := range d.waitingObjects {
+	for _, selector := range resourceSelectors {
+		gvk := schema.FromAPIVersionAndKind(selector.APIVersion, selector.Kind)
+		namespace := selector.Namespace
+
+		nsObjects, ok := d.waitingObjects[gvk]
+		if !ok {
+			continue
+		}
+
+		if namespace == "" {
+			for _, objects := range nsObjects {
+				d.matchInSubMap(objects, selector, matchedResult)
+			}
+		} else {
+			if objects, ok := nsObjects[namespace]; ok {
+				d.matchInSubMap(objects, selector, matchedResult)
+			}
+		}
+	}
+
+	return matchedResult.UnsortedList()
+}
+
+func (d *ResourceDetector) matchInSubMap(subMap map[keys.ClusterWideKey]struct{}, rs policyv1alpha1.ResourceSelector, matchedResult sets.Set[keys.ClusterWideKey]) {
+	for waitKey := range subMap {
+		if matchedResult.Has(waitKey) {
+			continue
+		}
+
 		waitObj, err := d.GetUnstructuredObject(waitKey)
 		if err != nil {
 			// all object in waiting list should exist. Just print a log to trace.
@@ -944,15 +1015,10 @@ func (d *ResourceDetector) GetMatching(resourceSelectors []policyv1alpha1.Resour
 			continue
 		}
 
-		for _, rs := range resourceSelectors {
-			if util.ResourceMatches(waitObj, rs) {
-				matchedResult = append(matchedResult, waitKey)
-				break
-			}
+		if util.ResourceMatches(waitObj, rs) {
+			matchedResult.Insert(waitKey)
 		}
 	}
-
-	return matchedResult
 }
 
 // OnPropagationPolicyAdd handles object add event and push the object to queue.
