@@ -43,7 +43,7 @@ func TestWaitAPIServiceReady(t *testing.T) {
 		{
 			name:             "WaitAPIServiceReady_AAAPIServiceDoesNotExist_Timeout",
 			aaAPIServiceName: aaAPIServiceName,
-			client:           fakeAggregator.NewSimpleClientset(),
+			client:           fakeAggregator.NewClientset(),
 			timeout:          time.Millisecond * 50,
 			prep:             func(aggregator.Interface) error { return nil },
 			wantErr:          true,
@@ -52,7 +52,7 @@ func TestWaitAPIServiceReady(t *testing.T) {
 		{
 			name:             "WaitAPIServiceReady_AAAPIServiceIsNotReady_Timeout",
 			aaAPIServiceName: aaAPIServiceName,
-			client:           fakeAggregator.NewSimpleClientset(),
+			client:           fakeAggregator.NewClientset(),
 			timeout:          time.Millisecond * 100,
 			prep: func(client aggregator.Interface) error {
 				if _, err := createAAAPIService(client, aaAPIServiceName); err != nil {
@@ -66,7 +66,7 @@ func TestWaitAPIServiceReady(t *testing.T) {
 		{
 			name:             "WaitAPIServiceReady_AAAPIServiceIsReady_ItIsNowReadyToUse",
 			aaAPIServiceName: aaAPIServiceName,
-			client:           fakeAggregator.NewSimpleClientset(),
+			client:           fakeAggregator.NewClientset(),
 			timeout:          time.Millisecond * 50,
 			prep: func(client aggregator.Interface) error {
 				if err := createAndMarkAAAPIServiceAvailable(client, aaAPIServiceName); err != nil {

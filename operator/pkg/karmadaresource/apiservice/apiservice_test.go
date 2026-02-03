@@ -38,7 +38,7 @@ func TestEnsureAggregatedAPIService(t *testing.T) {
 	caTestData := "test-ca-data"
 	caBundle := base64.StdEncoding.EncodeToString([]byte(caTestData))
 
-	fakeAggregatorClient := fakeAggregator.NewSimpleClientset()
+	fakeAggregatorClient := fakeAggregator.NewClientset()
 	fakeClient := fakeclientset.NewClientset()
 	err := EnsureAggregatedAPIService(
 		fakeAggregatorClient, fakeClient, name, namespace, name, namespace, caBundle,
@@ -67,7 +67,7 @@ func TestAggregatedAPIService(t *testing.T) {
 	caTestData := "test-ca-data"
 	caBundle := base64.StdEncoding.EncodeToString([]byte(caTestData))
 
-	fakeClient := fakeAggregator.NewSimpleClientset()
+	fakeClient := fakeAggregator.NewClientset()
 	err := aggregatedAPIService(fakeClient, name, namespace, caBundle)
 	if err != nil {
 		t.Fatalf("failed to create aggregated api service: %v", err)
@@ -154,7 +154,7 @@ func TestEnsureMetricsAdapterAPIService(t *testing.T) {
 	caTestData := "test-ca-data"
 	caBundle := base64.StdEncoding.EncodeToString([]byte(caTestData))
 
-	fakeAggregatorClient := fakeAggregator.NewSimpleClientset()
+	fakeAggregatorClient := fakeAggregator.NewClientset()
 	fakeClient := fakeclientset.NewClientset()
 	err := EnsureMetricsAdapterAPIService(
 		fakeAggregatorClient, fakeClient, name, namespace, name, namespace, caBundle,
@@ -183,7 +183,7 @@ func TestKarmadaMetricsAdapterAPIService(t *testing.T) {
 	caTestData := "test-ca-data"
 	caBundle := base64.StdEncoding.EncodeToString([]byte(caTestData))
 
-	fakeAggregatorClient := fakeAggregator.NewSimpleClientset()
+	fakeAggregatorClient := fakeAggregator.NewClientset()
 	err := karmadaMetricsAdapterAPIService(fakeAggregatorClient, name, namespace, caBundle)
 	if err != nil {
 		t.Fatalf("failed to create karmada metrics adapter api service: %v", err)
@@ -287,7 +287,7 @@ func TestEnsureSearchAPIService(t *testing.T) {
 	caTestData := "test-ca-data"
 	caBundle := base64.StdEncoding.EncodeToString([]byte(caTestData))
 
-	fakeAggregatorClient := fakeAggregator.NewSimpleClientset()
+	fakeAggregatorClient := fakeAggregator.NewClientset()
 	fakeClient := fakeclientset.NewClientset()
 	err := EnsureSearchAPIService(
 		fakeAggregatorClient, fakeClient, name, namespace, name, namespace, caBundle,
@@ -316,7 +316,7 @@ func TestKarmadaSearchAPIService(t *testing.T) {
 	caTestData := "test-ca-data"
 	caBundle := base64.StdEncoding.EncodeToString([]byte(caTestData))
 
-	fakeClient := fakeAggregator.NewSimpleClientset()
+	fakeClient := fakeAggregator.NewClientset()
 	err := karmadaSearchAPIService(fakeClient, name, namespace, caBundle)
 	if err != nil {
 		t.Fatalf("failed to ensure metrics adapter api service: %v", err)
