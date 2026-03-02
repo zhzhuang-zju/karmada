@@ -1,5 +1,6 @@
 name: Update Helm Chart Index (Pull Request)
-
+env:
+  HELM_VERSION: v3.17.3
 on:
   release:
     types: [published]
