@@ -61,7 +61,7 @@ jobs:
           yq eval 'del(.entries.common)' -i charts/index.yaml
 
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v8
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           commit-message: "docs: update helm chart index for ${{ env.VERSION }}"
