@@ -40,15 +40,13 @@ jobs:
 
       - name: Update Karmada Index
         run: |
-          curl -L -o charts/karmada/karmada-chart-${{ env.VERSION }}.tgz 
-            "https://github.com/karmada-io/karmada/releases/download/${{ env.VERSION }}/karmada-chart-${{ env.VERSION }}.tgz"
+          curl -L -o charts/karmada/karmada-chart-${{ env.VERSION }}.tgz "https://github.com/karmada-io/karmada/releases/download/${{ env.VERSION }}/karmada-chart-${{ env.VERSION }}.tgz"
           
           helm repo index charts/karmada --url "https://github.com/karmada-io/karmada/releases/download/${{ env.VERSION }}" --merge charts/index.yaml
 
       - name: Update Karmada Operator Index
         run: |
-          curl -L -o charts/karmada-operator/karmada-operator-chart-${{ env.VERSION }}.tgz 
-            "https://github.com/karmada-io/karmada/releases/download/${{ env.VERSION }}/karmada-operator-chart-${{ env.VERSION }}.tgz"
+          curl -L -o charts/karmada-operator/karmada-operator-chart-${{ env.VERSION }}.tgz "https://github.com/karmada-io/karmada/releases/download/${{ env.VERSION }}/karmada-operator-chart-${{ env.VERSION }}.tgz"
           
           helm repo index charts/karmada-operator --url "https://github.com/karmada-io/karmada/releases/download/${{ env.VERSION }}" --merge charts/index.yaml
 
