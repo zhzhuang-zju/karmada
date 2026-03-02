@@ -62,7 +62,7 @@ jobs:
           
           # Use yq to remove the auto-generated common entry
           # yq is pre-installed on ubuntu-latest runners
-          yq eval-all --no-doc 'del(.entries.common)' -i index.yaml
+          yq eval-all --no-doc 'del(.entries.common)' -i charts/index.yaml
       - name: commit changes and create pull request
         env:
           GH_TOKEN: ${{ github.token }}
