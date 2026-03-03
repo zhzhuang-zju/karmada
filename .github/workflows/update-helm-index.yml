@@ -60,16 +60,16 @@ jobs:
           rm -f charts/karmada/*.tgz
           rm -f charts/karmada-operator/*.tgz
           
-          # Use yq to remove the auto-generated common entry
-          # yq is pre-installed on ubuntu-latest runners
-          yq eval-all --no-doc 'del(.entries.common)' -i charts/index.yaml
+          # Remove the common entry if it exists
+          sed -i '/^  common:$/,/^  [a-zA-Z]/{/^  common:/d; /^  [a-zA-Z]/!d}' charts/index.yaml
+
       - name: commit changes and create pull request
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "actions@github.com"
-          BRANCH="action-helm-index-${{ github.sha }}"
+          BRANCH="auto-action-helm-index-${{ github.sha }}"
           git checkout -b $BRANCH
           git add .
           if git diff --cached --quiet; then
