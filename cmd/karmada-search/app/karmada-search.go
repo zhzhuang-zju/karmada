@@ -54,6 +54,7 @@ import (
 	"github.com/karmada-io/karmada/pkg/sharedcli"
 	"github.com/karmada-io/karmada/pkg/sharedcli/klogflag"
 	"github.com/karmada-io/karmada/pkg/sharedcli/profileflag"
+	"github.com/karmada-io/karmada/pkg/util"
 	"github.com/karmada-io/karmada/pkg/util/lifted"
 	"github.com/karmada-io/karmada/pkg/util/names"
 	"github.com/karmada-io/karmada/pkg/version"
@@ -211,10 +212,12 @@ func config(o *options.Options, outOfTreeRegistryOptions ...Option) (*search.Con
 
 	karmadaClient := karmadaclientset.NewForConfigOrDie(serverConfig.ClientConfig)
 	factory := informerfactory.NewSharedInformerFactory(karmadaClient, 0)
+	rateLimiterGetter := util.GetClusterRateLimiterGetter().SetDefaultLimits(o.ClusterAPIQPS, o.ClusterAPIBurst)
+	clusterClientOption := &util.ClientOption{RateLimiterGetter: rateLimiterGetter.GetRateLimiter}
 
 	var ctl *search.Controller
 	if !o.DisableSearch {
-		ctl, err = search.NewController(serverConfig.ClientConfig, factory, restMapper)
+		ctl, err = search.NewController(serverConfig.ClientConfig, factory, restMapper, clusterClientOption)
 		if err != nil {
 			return nil, err
 		}

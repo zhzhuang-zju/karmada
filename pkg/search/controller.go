@@ -64,11 +64,12 @@ func (c *clusterRegistry) unregistry() bool {
 
 // Controller ResourceRegistry controller
 type Controller struct {
-	restConfig      *rest.Config
-	restMapper      meta.RESTMapper
-	informerFactory informerfactory.SharedInformerFactory
-	clusterLister   clusterlister.ClusterLister
-	queue           workqueue.TypedRateLimitingInterface[any]
+	restConfig          *rest.Config
+	restMapper          meta.RESTMapper
+	informerFactory     informerfactory.SharedInformerFactory
+	clusterLister       clusterlister.ClusterLister
+	queue               workqueue.TypedRateLimitingInterface[any]
+	clusterClientOption *util.ClientOption
 
 	clusterRegistry sync.Map
 
@@ -76,16 +77,17 @@ type Controller struct {
 }
 
 // NewController returns a new ResourceRegistry controller
-func NewController(restConfig *rest.Config, factory informerfactory.SharedInformerFactory, restMapper meta.RESTMapper) (*Controller, error) {
+func NewController(restConfig *rest.Config, factory informerfactory.SharedInformerFactory, restMapper meta.RESTMapper, clusterClientOption *util.ClientOption) (*Controller, error) {
 	clusterLister := factory.Cluster().V1alpha1().Clusters().Lister()
 	queue := workqueue.NewTypedRateLimitingQueue[any](workqueue.DefaultTypedControllerRateLimiter[any]())
 
 	c := &Controller{
-		restConfig:      restConfig,
-		informerFactory: factory,
-		clusterLister:   clusterLister,
-		queue:           queue,
-		restMapper:      restMapper,
+		restConfig:          restConfig,
+		informerFactory:     factory,
+		clusterLister:       clusterLister,
+		queue:               queue,
+		clusterClientOption: clusterClientOption,
+		restMapper:          restMapper,
 
 		InformerManager: genericmanager.GetInstance(),
 	}
@@ -348,9 +350,8 @@ func (c *Controller) getRegistryBackendHandler(cluster string, matchedRegistries
 	return handler, nil
 }
 
-var clusterDynamicClientBuilder = func(cluster string, controlPlaneClient client.Client) (*util.DynamicClusterClient, error) {
-	// TODO: Add "--cluster-api-qps" and "--cluster-api-burst" flags to karmada-search and pass them via clientOption， instead of passing a "nil" here
-	return util.NewClusterDynamicClientSet(cluster, controlPlaneClient, nil)
+var clusterDynamicClientBuilder = func(cluster string, controlPlaneClient client.Client, clusterClientOption *util.ClientOption) (*util.DynamicClusterClient, error) {
+	return util.NewClusterDynamicClientSet(cluster, controlPlaneClient, clusterClientOption)
 }
 
 // doCacheCluster processes the resourceRegistry object
@@ -392,7 +393,7 @@ func (c *Controller) doCacheCluster(cluster string) error {
 		klog.Info("Try to build informer manager for cluster ", cluster)
 		controlPlaneClient := gclient.NewForConfigOrDie(c.restConfig)
 
-		clusterDynamicClient, err := clusterDynamicClientBuilder(cluster, controlPlaneClient)
+		clusterDynamicClient, err := clusterDynamicClientBuilder(cluster, controlPlaneClient, c.clusterClientOption)
 		if err != nil {
 			return err
 		}
