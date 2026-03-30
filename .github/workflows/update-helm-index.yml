@@ -64,7 +64,7 @@ jobs:
           # for `git describe --tags` in Makefile.
           fetch-depth: 0
       - name: Install Helm
-        uses: azure/setup-helm@v4
+        uses: azure/setup-helm@v5
         with:
           version: ${{ env.HELM_VERSION }}
       - name: Update Helm Index
