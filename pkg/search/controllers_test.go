@@ -105,7 +105,7 @@ func TestNewKarmadaSearchController(t *testing.T) {
 			if err := test.prep(&test.factory, test.client); err != nil {
 				t.Fatalf("failed to prep test environment before creating new controller, got: %v", err)
 			}
-			_, err := NewController(test.restConfig, test.factory, test.restMapper)
+			_, err := NewController(test.restConfig, test.factory, test.restMapper, nil)
 			if err == nil && test.wantErr {
 				t.Fatal("expected an error, but got none")
 			}
@@ -270,7 +270,7 @@ func TestDeleteClusterEventHandler(t *testing.T) {
 					}
 				)
 
-				clusterDynamicClientBuilder = func(string, client.Client) (*util.DynamicClusterClient, error) {
+				clusterDynamicClientBuilder = func(string, client.Client, *util.ClientOption) (*util.DynamicClusterClient, error) {
 					return &util.DynamicClusterClient{
 						DynamicClientSet: fakedynamic.NewSimpleDynamicClient(scheme.Scheme),
 						ClusterName:      clusterName,
@@ -359,7 +359,7 @@ func TestAddResourceRegistryEventHandler(t *testing.T) {
 					}
 				)
 
-				clusterDynamicClientBuilder = func(string, client.Client) (*util.DynamicClusterClient, error) {
+				clusterDynamicClientBuilder = func(string, client.Client, *util.ClientOption) (*util.DynamicClusterClient, error) {
 					return &util.DynamicClusterClient{
 						DynamicClientSet: fakedynamic.NewSimpleDynamicClient(scheme.Scheme),
 						ClusterName:      clusterName,
@@ -445,7 +445,7 @@ func TestUpdateResourceRegistryEventHandler(t *testing.T) {
 					}
 				)
 
-				clusterDynamicClientBuilder = func(string, client.Client) (*util.DynamicClusterClient, error) {
+				clusterDynamicClientBuilder = func(string, client.Client, *util.ClientOption) (*util.DynamicClusterClient, error) {
 					return &util.DynamicClusterClient{
 						DynamicClientSet: fakedynamic.NewSimpleDynamicClient(scheme.Scheme),
 						ClusterName:      clusterName,
@@ -529,7 +529,7 @@ func TestDeleteResourceRegistryEventHandler(t *testing.T) {
 					}
 				)
 
-				clusterDynamicClientBuilder = func(string, client.Client) (*util.DynamicClusterClient, error) {
+				clusterDynamicClientBuilder = func(string, client.Client, *util.ClientOption) (*util.DynamicClusterClient, error) {
 					return &util.DynamicClusterClient{
 						DynamicClientSet: fakedynamic.NewSimpleDynamicClient(scheme.Scheme),
 						ClusterName:      clusterName,
@@ -585,7 +585,7 @@ func TestDeleteResourceRegistryEventHandler(t *testing.T) {
 // Kubernetes REST configuration, shared informer factory, and REST mapper.
 // It returns the created Controller or an error if initialization fails.
 func createController(ctx context.Context, restConfig *rest.Config, factory informerfactory.SharedInformerFactory, restMapper meta.RESTMapper) (*Controller, error) {
-	newController, err := NewController(restConfig, factory, restMapper)
+	newController, err := NewController(restConfig, factory, restMapper, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create new controller, got: %v", err)
 	}
