@@ -15,8 +15,7 @@ on:
         type: string
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 jobs:
   get-helm-versions:
@@ -48,6 +47,9 @@ jobs:
 
   update-index-pr:
     name: Update Index and Create PR
+    permissions:
+      contents: write
+      pull-requests: write
     needs: get-helm-versions
     if: needs.get-helm-versions.outputs.should_run == 'true'
     runs-on: ubuntu-22.04
@@ -61,12 +63,10 @@ jobs:
           ref: master
           # fetch-depth:
           # 0 indicates all history for all branches and tags.
-          # for `git describe --tags` in Makefile.
           fetch-depth: 0
       - name: Install Helm
-        uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5.0.0
-        with:
-          version: ${{ env.HELM_VERSION }}
+        run: |
+          curl --fail --show-error https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash -s -- --version ${HELM_VERSION}
       - name: Update Helm Index
         run: |
           for VERSION in ${{ env.VERSIONS }}; do
