@@ -1042,7 +1042,7 @@ func (o *CommandRegisterOption) makeKarmadaAgentDeployment() *appsv1.Deployment 
 					"--cluster-status-update-frequency=10s",
 					"--metrics-bind-address=:8080",
 					"--health-probe-bind-address=0.0.0.0:10357",
-					"--v=4",
+					"--v=2",
 				},
 				Ports: []corev1.ContainerPort{
 					{

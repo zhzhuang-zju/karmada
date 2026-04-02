@@ -91,6 +91,7 @@ func (i *CommandInitOption) defaultKarmadaAPIServerContainerCommand() []string {
 		fmt.Sprintf("--tls-cert-file=%s/%s.crt", karmadaCertsVolumeMountPath, options.ApiserverCertAndKeyName),
 		fmt.Sprintf("--tls-private-key-file=%s/%s.key", karmadaCertsVolumeMountPath, options.ApiserverCertAndKeyName),
 		"--tls-min-version=VersionTLS13",
+		"--v=2",
 	}
 	if i.ExternalEtcdKeyPrefix != "" {
 		command = append(command, fmt.Sprintf("--etcd-prefix=%s", i.ExternalEtcdKeyPrefix))
@@ -110,7 +111,7 @@ func (i *CommandInitOption) defaultKarmadaSchedulerContainerCommand() []string {
 		"--scheduler-estimator-cert-file=/etc/karmada/pki/karmada.crt",
 		"--scheduler-estimator-key-file=/etc/karmada/pki/karmada.key",
 		fmt.Sprintf("--leader-elect-resource-namespace=%s", i.Namespace),
-		"--v=4",
+		"--v=2",
 	}
 }
 
@@ -136,7 +137,7 @@ func (i *CommandInitOption) defaultKarmadaKubeControllerManagerContainerCommand(
 		fmt.Sprintf("--service-account-private-key-file=%s/%s.key", karmadaCertsVolumeMountPath, options.KarmadaCertAndKeyName),
 		fmt.Sprintf("--service-cluster-ip-range=%s", serviceClusterIP),
 		"--use-service-account-credentials=true",
-		"--v=4",
+		"--v=2",
 	}
 }
 
@@ -148,7 +149,7 @@ func (i *CommandInitOption) defaultKarmadaControllerManagerContainerCommand() []
 		"--health-probe-bind-address=$(POD_IP):10357",
 		"--cluster-status-update-frequency=10s",
 		fmt.Sprintf("--leader-elect-resource-namespace=%s", i.Namespace),
-		"--v=4",
+		"--v=2",
 	}
 }
 
@@ -161,7 +162,7 @@ func (i *CommandInitOption) defaultKarmadaWebhookContainerCommand() []string {
 		"--health-probe-bind-address=$(POD_IP):8000",
 		fmt.Sprintf("--secure-port=%v", webhookTargetPort),
 		fmt.Sprintf("--cert-dir=%s", webhookCertVolumeMountPath),
-		"--v=4",
+		"--v=2",
 	}
 }
 
@@ -186,6 +187,7 @@ func (i *CommandInitOption) defaultKarmadaAggregatedAPIServerContainerCommand() 
 		"--audit-log-maxage=0",
 		"--audit-log-maxbackup=0",
 		"--bind-address=$(POD_IP)",
+		"--v=2",
 	}
 	if i.ExternalEtcdKeyPrefix != "" {
 		command = append(command, fmt.Sprintf("--etcd-prefix=%s", i.ExternalEtcdKeyPrefix))

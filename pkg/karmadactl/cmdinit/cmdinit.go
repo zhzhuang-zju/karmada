@@ -112,9 +112,9 @@ var (
 		%[1]s init --karmada-webhook-extra-args="--v=2" --karmada-webhook-extra-args="--enable-pprof"
 
 		# Pass extra arguments to Karmada Aggregated API Server. (Parameters are separated by commas)
-		%[1]s init --karmada-aggregated-apiserver-extra-args="--v=4,--enable-pprof"
+		%[1]s init --karmada-aggregated-apiserver-extra-args="--v=2,--enable-pprof"
 		# Or write them separately.
-		%[1]s init --karmada-aggregated-apiserver-extra-args="--v=4" --karmada-aggregated-apiserver-extra-args="--enable-pprof"`)
+		%[1]s init --karmada-aggregated-apiserver-extra-args="--v=2" --karmada-aggregated-apiserver-extra-args="--enable-pprof"`)
 )
 
 // NewCmdInit install Karmada on Kubernetes
@@ -223,7 +223,7 @@ func NewCmdInit(parentCommand string) *cobra.Command {
 	flags.StringVarP(&opts.KarmadaAggregatedAPIServerImage, "karmada-aggregated-apiserver-image", "", kubernetes.DefaultKarmadaAggregatedAPIServerImage, "Karmada aggregated apiserver image")
 	flags.Int32VarP(&opts.KarmadaAggregatedAPIServerReplicas, "karmada-aggregated-apiserver-replicas", "", 1, "Karmada aggregated apiserver replica set")
 	flags.StringVar(&opts.KarmadaAggregatedAPIServerPriorityClass, "karmada-aggregated-apiserver-priority-class", "system-node-critical", "The priority class name for the component karmada-aggregated-apiserver.")
-	flags.StringSliceVar(&opts.KarmadaAggregatedAPIServerExtraArgs, "karmada-aggregated-apiserver-extra-args", nil, "Additional command line arguments to pass to the karmada-aggregated-apiserver component. Can be specified multiple times or as comma-separated values (e.g., '--v=4,--enable-pprof')")
+	flags.StringSliceVar(&opts.KarmadaAggregatedAPIServerExtraArgs, "karmada-aggregated-apiserver-extra-args", nil, "Additional command line arguments to pass to the karmada-aggregated-apiserver component. Can be specified multiple times or as comma-separated values (e.g., '--v=2,--enable-pprof')")
 
 	return cmd
 }
