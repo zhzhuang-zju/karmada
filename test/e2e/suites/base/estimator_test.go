@@ -163,7 +163,7 @@ var _ = ginkgo.Describe("Quota plugin Testing", func() {
 			deployBindingName := names.GenerateBindingName(util.DeploymentKind, deployName)
 			framework.WaitResourceBindingFitWith(karmadaClient, deployNamespace, deployBindingName, func(binding *workv1alpha2.ResourceBinding) bool {
 				cond := meta.FindStatusCondition(binding.Status.Conditions, workv1alpha2.Scheduled)
-				return binding.Spec.Clusters == nil && cond != nil && cond.Status == metav1.ConditionFalse && cond.Reason == workv1alpha2.BindingReasonSchedulerError
+				return binding.Spec.Clusters == nil && cond != nil && cond.Status == metav1.ConditionFalse && cond.Reason == workv1alpha2.BindingReasonUnschedulable
 			})
 			framework.WaitResourceBindingFitWith(karmadaClient, deployNamespace, deployBindingName, func(binding *workv1alpha2.ResourceBinding) bool {
 				if binding.Spec.ReplicaRequirements == nil {
