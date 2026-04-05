@@ -1172,7 +1172,11 @@ func (d *ResourceDetector) handlePolicyDeletion(claimMetadata labels.Set, resour
 	return errors.NewAggregate(errs)
 }
 
-func (d *ResourceDetector) handleResourceTemplateAndBindingCleanup(template *unstructured.Unstructured, objRef workv1alpha2.ObjectReference, targetClaimMetadata map[string]string, cleanupFunc func(obj metav1.Object)) error {
+func (d *ResourceDetector) handleResourceTemplateAndBindingCleanup(
+	template *unstructured.Unstructured,
+	objRef workv1alpha2.ObjectReference,
+	targetClaimMetadata map[string]string,
+	cleanupFunc func(obj metav1.Object)) error {
 	bindingName := names.GenerateBindingName(template.GetKind(), template.GetName())
 	if template.GetNamespace() != "" {
 		// Clean up the claim metadata from the reference binding so that the karmada scheduler won't reschedule the binding.
