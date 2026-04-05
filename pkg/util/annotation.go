@@ -29,7 +29,9 @@ import (
 )
 
 // MergeAnnotation adds annotation for the given object, replace the value if key exist.
-func MergeAnnotation(obj *unstructured.Unstructured, annotationKey string, annotationValue string) {
+func MergeAnnotation(obj *unstructured.Unstructured,
+	annotationKey string,
+	annotationValue string) {
 	objectAnnotation := obj.GetAnnotations()
 	if objectAnnotation == nil {
 		objectAnnotation = make(map[string]string, 1)
