@@ -97,7 +97,7 @@ func (c *ClusterTaintPolicyController) Reconcile(ctx context.Context, req contro
 	}
 
 	if !reflect.DeepEqual(clusterObj.Spec.Taints, clusterCopyObj.Spec.Taints) {
-		objPatch := client.MergeFrom(clusterObj)
+		objPatch := client.MergeFromWithOptions(clusterObj, client.MergeFromWithOptimisticLock{})
 		err := c.Client.Patch(ctx, clusterCopyObj, objPatch)
 		if err != nil {
 			klog.ErrorS(err, "Failed to patch Cluster", "cluster", req.Name)
