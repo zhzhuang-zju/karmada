@@ -433,13 +433,13 @@ func applyFieldOverriders(rawObj *unstructured.Unstructured, FieldOverriders []p
 		if len(FieldOverriders[index].YAML) > 0 {
 			appliedRawData, err = applyRawYAMLPatch(dataBytes, parseYAMLPatchesByField(FieldOverriders[index].YAML))
 			if err != nil {
-				klog.Errorf("Error applying raw JSON patch: %v", err)
+				klog.Errorf("Error applying raw YAML patch: %v", err)
 				return err
 			}
 		} else if len(FieldOverriders[index].JSON) > 0 {
 			appliedRawData, err = applyRawJSONPatch(dataBytes, parseJSONPatchesByField(FieldOverriders[index].JSON))
 			if err != nil {
-				klog.Errorf("Error applying raw YAML patch: %v", err)
+				klog.Errorf("Error applying raw JSON patch: %v", err)
 				return err
 			}
 		}

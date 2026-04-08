@@ -435,6 +435,9 @@ func ValidateOverrideRules(overrideRules []policyv1alpha1.RuleWithCluster, fldPa
 			if len(fieldOverrider.YAML) > 0 && len(fieldOverrider.JSON) > 0 {
 				allErrs = append(allErrs, field.Invalid(fieldPath, fieldOverrider, "FieldOverrider has both YAML and JSON set. Only one is allowed"))
 			}
+			if len(fieldOverrider.YAML) == 0 && len(fieldOverrider.JSON) == 0 {
+				allErrs = append(allErrs, field.Required(fieldPath, "FieldOverrider must have either JSON or YAML set"))
+			}
 			// validates the field path.
 			if _, err := jsonpointer.New(fieldOverrider.FieldPath); err != nil {
 				allErrs = append(allErrs, field.Invalid(fieldPath.Child("fieldPath"), fieldOverrider.FieldPath, err.Error()))

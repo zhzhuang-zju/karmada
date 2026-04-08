@@ -234,6 +234,110 @@ func TestValidateOverrideSpec(t *testing.T) {
 			},
 			expectError: true,
 		},
+		{
+			name: "fieldOverrider with neither YAML nor JSON should be rejected",
+			overrideSpec: policyv1alpha1.OverrideSpec{
+				OverrideRules: []policyv1alpha1.RuleWithCluster{
+					{
+						TargetCluster: &policyv1alpha1.ClusterAffinity{
+							ClusterNames: []string{"cluster-name"},
+						},
+						Overriders: policyv1alpha1.Overriders{
+							FieldOverrider: []policyv1alpha1.FieldOverrider{
+								{
+									FieldPath: "/data/config",
+								},
+							},
+						},
+					},
+				},
+			},
+			expectError: true,
+		},
+		{
+			name: "fieldOverrider with both YAML and JSON set should be rejected",
+			overrideSpec: policyv1alpha1.OverrideSpec{
+				OverrideRules: []policyv1alpha1.RuleWithCluster{
+					{
+						TargetCluster: &policyv1alpha1.ClusterAffinity{
+							ClusterNames: []string{"cluster-name"},
+						},
+						Overriders: policyv1alpha1.Overriders{
+							FieldOverrider: []policyv1alpha1.FieldOverrider{
+								{
+									FieldPath: "/data/config",
+									JSON: []policyv1alpha1.JSONPatchOperation{
+										{
+											SubPath:  "/key",
+											Operator: policyv1alpha1.OverriderOpRemove,
+										},
+									},
+									YAML: []policyv1alpha1.YAMLPatchOperation{
+										{
+											SubPath:  "/key",
+											Operator: policyv1alpha1.OverriderOpRemove,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectError: true,
+		},
+		{
+			name: "fieldOverrider with only YAML set should be allowed",
+			overrideSpec: policyv1alpha1.OverrideSpec{
+				OverrideRules: []policyv1alpha1.RuleWithCluster{
+					{
+						TargetCluster: &policyv1alpha1.ClusterAffinity{
+							ClusterNames: []string{"cluster-name"},
+						},
+						Overriders: policyv1alpha1.Overriders{
+							FieldOverrider: []policyv1alpha1.FieldOverrider{
+								{
+									FieldPath: "/data/config",
+									YAML: []policyv1alpha1.YAMLPatchOperation{
+										{
+											SubPath:  "/key",
+											Operator: policyv1alpha1.OverriderOpRemove,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "fieldOverrider with only JSON set should be allowed",
+			overrideSpec: policyv1alpha1.OverrideSpec{
+				OverrideRules: []policyv1alpha1.RuleWithCluster{
+					{
+						TargetCluster: &policyv1alpha1.ClusterAffinity{
+							ClusterNames: []string{"cluster-name"},
+						},
+						Overriders: policyv1alpha1.Overriders{
+							FieldOverrider: []policyv1alpha1.FieldOverrider{
+								{
+									FieldPath: "/data/config",
+									JSON: []policyv1alpha1.JSONPatchOperation{
+										{
+											SubPath:  "/key",
+											Operator: policyv1alpha1.OverriderOpRemove,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectError: false,
+		},
 	}
 
 	for _, test := range tests {
