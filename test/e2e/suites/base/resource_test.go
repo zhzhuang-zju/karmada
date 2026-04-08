@@ -193,14 +193,18 @@ var _ = ginkgo.Describe("[resource-status collection] resource status collection
 					latestSvc, err := kubeClient.CoreV1().Services(serviceNamespace).Get(context.TODO(), serviceName, metav1.GetOptions{})
 					g.Expect(err).NotTo(gomega.HaveOccurred())
 
-					// TODO:  Once karmada-apiserver v1.30 deploy by default,delete the following five lines, see https://github.com/karmada-io/karmada/pull/5141
-					for i := range latestSvc.Status.LoadBalancer.Ingress {
-						if latestSvc.Status.LoadBalancer.Ingress[i].IPMode != nil {
-							latestSvc.Status.LoadBalancer.Ingress[i].IPMode = nil
-						}
+					actualIngresses := make([]struct{ IP, Hostname string }, 0, len(latestSvc.Status.LoadBalancer.Ingress))
+					for _, ingress := range latestSvc.Status.LoadBalancer.Ingress {
+						actualIngresses = append(actualIngresses, struct{ IP, Hostname string }{IP: ingress.IP, Hostname: ingress.Hostname})
 					}
+
+					expectedIngresses := make([]struct{ IP, Hostname string }, 0, len(svcLoadBalancer.Ingress))
+					for _, ingress := range svcLoadBalancer.Ingress {
+						expectedIngresses = append(expectedIngresses, struct{ IP, Hostname string }{IP: ingress.IP, Hostname: ingress.Hostname})
+					}
+
 					klog.Infof("the latest serviceStatus loadBalancer: %v", latestSvc.Status.LoadBalancer)
-					return reflect.DeepEqual(latestSvc.Status.LoadBalancer.Ingress, svcLoadBalancer.Ingress), nil
+					return reflect.DeepEqual(actualIngresses, expectedIngresses), nil
 				}, pollTimeout, pollInterval).Should(gomega.Equal(true))
 			})
 		})
