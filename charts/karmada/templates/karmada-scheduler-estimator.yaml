@@ -55,6 +55,7 @@ spec:
             - --grpc-client-ca-file=/etc/karmada/pki/server-ca.crt
             - --metrics-bind-address=$(POD_IP):8080
             - --health-probe-bind-address=$(POD_IP):10351
+            - --v={{ $.Values.schedulerEstimator.logVerbosity }}
             {{- /*
             We use '$' to refer to the root context.
             Inside this 'range' loop, '.' refers to the current item from '.Values.schedulerEstimator.memberClusters'.
