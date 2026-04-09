@@ -17,14 +17,59 @@ limitations under the License.
 package main
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
+	cliflag "k8s.io/component-base/cli/flag"
 )
 
-// MarkdownPostProcessing goes through the generated files
+const optionsFenceHeading = "### Options\n\n```\n"
+
+// patchOptsFromHelp replaces the first ### Options fence in md with component-base grouped flags from cmd.Help() when available; otherwise returns md unchanged.
+func patchOptsFromHelp(md string, cmd *cobra.Command) string {
+	cmd.InitDefaultHelpCmd()
+	cmd.InitDefaultCompletionCmd()
+	cmd.SetGlobalNormalizationFunc(cliflag.WordSepNormalizeFunc)
+
+	var hb bytes.Buffer
+	out, errOut := cmd.OutOrStdout(), cmd.ErrOrStderr()
+	cmd.SetOut(&hb)
+	cmd.SetErr(&hb)
+	if err := cmd.Help(); err != nil {
+		cmd.SetOut(out)
+		cmd.SetErr(errOut)
+		return md
+	}
+	cmd.SetOut(out)
+	cmd.SetErr(errOut)
+	s := hb.String()
+	tail := ""
+	const usagePrefix = "Usage:\n  "
+	if _, after, ok := strings.Cut(s, usagePrefix); ok {
+		if _, rest, ok2 := strings.Cut(after, "\n"); ok2 {
+			tail = strings.TrimSpace(rest)
+		}
+	}
+	if !strings.Contains(tail, " flags:\n") {
+		return md
+	}
+	// Replace body of first ### Options ```...``` block: [lo, lo+rel) is old PrintDefaults text.
+	lo := strings.Index(md, optionsFenceHeading)
+	if lo < 0 {
+		return md
+	}
+	lo += len(optionsFenceHeading)
+	rel := strings.Index(md[lo:], "\n```")
+	if rel < 0 {
+		return md
+	}
+	return md[:lo] + tail + md[lo+rel:]
+}
+
+// MarkdownPostProcessing reads each generated .md (same walk as doc.GenMarkdownTree), runs patchOptsFromHelp, then processor.
 func MarkdownPostProcessing(cmd *cobra.Command, dir string, processor func(string) string) error {
 	for _, c := range cmd.Commands() {
 		if !c.IsAvailableCommand() || c.IsAdditionalHelpTopicCommand() {
@@ -48,7 +93,8 @@ func MarkdownPostProcessing(cmd *cobra.Command, dir string, processor func(strin
 		return err
 	}
 
-	processedMarkDown := processor(string(markdownBytes))
+	md := patchOptsFromHelp(string(markdownBytes), cmd)
+	processedMarkDown := processor(md)
 
 	return os.WriteFile(filename, []byte(processedMarkDown), 0600)
 }
