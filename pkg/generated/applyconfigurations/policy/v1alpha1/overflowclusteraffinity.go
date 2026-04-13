@@ -22,36 +22,26 @@ import (
 	v1 "k8s.io/client-go/applyconfigurations/meta/v1"
 )
 
-// ClusterAffinityTermApplyConfiguration represents a declarative configuration of the ClusterAffinityTerm type for use
+// OverflowClusterAffinityApplyConfiguration represents a declarative configuration of the OverflowClusterAffinity type for use
 // with apply.
 //
-// ClusterAffinityTerm selects a set of cluster.
-type ClusterAffinityTermApplyConfiguration struct {
+// OverflowClusterAffinity represents an overflow tier of candidate clusters.
+type OverflowClusterAffinityApplyConfiguration struct {
 	// AffinityName is the name of the cluster group.
 	AffinityName                      *string `json:"affinityName,omitempty"`
 	ClusterAffinityApplyConfiguration `json:",inline"`
-	// OverflowAffinities defines additional cluster groups that the scheduler
-	// can progressively include when the primary group (defined by the inline
-	// ClusterAffinity) has insufficient resources. Groups are expanded in order
-	// and contracted in reverse during scale-down.
-	// Can only be used together with the inline ClusterAffinity (the inline
-	// ClusterAffinity serves as the primary/preferred group).
-	// If a cluster appears in multiple OverflowClusterAffinity entries, it is
-	// scheduled according to the first entry in which it appears; subsequent
-	// occurrences of the same cluster are ignored.
-	OverflowAffinities []OverflowClusterAffinityApplyConfiguration `json:"overflowAffinities,omitempty"`
 }
 
-// ClusterAffinityTermApplyConfiguration constructs a declarative configuration of the ClusterAffinityTerm type for use with
+// OverflowClusterAffinityApplyConfiguration constructs a declarative configuration of the OverflowClusterAffinity type for use with
 // apply.
-func ClusterAffinityTerm() *ClusterAffinityTermApplyConfiguration {
-	return &ClusterAffinityTermApplyConfiguration{}
+func OverflowClusterAffinity() *OverflowClusterAffinityApplyConfiguration {
+	return &OverflowClusterAffinityApplyConfiguration{}
 }
 
 // WithAffinityName sets the AffinityName field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the AffinityName field is set to the value of the last call.
-func (b *ClusterAffinityTermApplyConfiguration) WithAffinityName(value string) *ClusterAffinityTermApplyConfiguration {
+func (b *OverflowClusterAffinityApplyConfiguration) WithAffinityName(value string) *OverflowClusterAffinityApplyConfiguration {
 	b.AffinityName = &value
 	return b
 }
@@ -59,7 +49,7 @@ func (b *ClusterAffinityTermApplyConfiguration) WithAffinityName(value string) *
 // WithLabelSelector sets the LabelSelector field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the LabelSelector field is set to the value of the last call.
-func (b *ClusterAffinityTermApplyConfiguration) WithLabelSelector(value *v1.LabelSelectorApplyConfiguration) *ClusterAffinityTermApplyConfiguration {
+func (b *OverflowClusterAffinityApplyConfiguration) WithLabelSelector(value *v1.LabelSelectorApplyConfiguration) *OverflowClusterAffinityApplyConfiguration {
 	b.ClusterAffinityApplyConfiguration.LabelSelector = value
 	return b
 }
@@ -67,7 +57,7 @@ func (b *ClusterAffinityTermApplyConfiguration) WithLabelSelector(value *v1.Labe
 // WithFieldSelector sets the FieldSelector field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the FieldSelector field is set to the value of the last call.
-func (b *ClusterAffinityTermApplyConfiguration) WithFieldSelector(value *FieldSelectorApplyConfiguration) *ClusterAffinityTermApplyConfiguration {
+func (b *OverflowClusterAffinityApplyConfiguration) WithFieldSelector(value *FieldSelectorApplyConfiguration) *OverflowClusterAffinityApplyConfiguration {
 	b.ClusterAffinityApplyConfiguration.FieldSelector = value
 	return b
 }
@@ -75,7 +65,7 @@ func (b *ClusterAffinityTermApplyConfiguration) WithFieldSelector(value *FieldSe
 // WithClusterNames adds the given value to the ClusterNames field in the declarative configuration
 // and returns the receiver, so that objects can be build by chaining "With" function invocations.
 // If called multiple times, values provided by each call will be appended to the ClusterNames field.
-func (b *ClusterAffinityTermApplyConfiguration) WithClusterNames(values ...string) *ClusterAffinityTermApplyConfiguration {
+func (b *OverflowClusterAffinityApplyConfiguration) WithClusterNames(values ...string) *OverflowClusterAffinityApplyConfiguration {
 	for i := range values {
 		b.ClusterAffinityApplyConfiguration.ClusterNames = append(b.ClusterAffinityApplyConfiguration.ClusterNames, values[i])
 	}
@@ -85,22 +75,9 @@ func (b *ClusterAffinityTermApplyConfiguration) WithClusterNames(values ...strin
 // WithExcludeClusters adds the given value to the ExcludeClusters field in the declarative configuration
 // and returns the receiver, so that objects can be build by chaining "With" function invocations.
 // If called multiple times, values provided by each call will be appended to the ExcludeClusters field.
-func (b *ClusterAffinityTermApplyConfiguration) WithExcludeClusters(values ...string) *ClusterAffinityTermApplyConfiguration {
+func (b *OverflowClusterAffinityApplyConfiguration) WithExcludeClusters(values ...string) *OverflowClusterAffinityApplyConfiguration {
 	for i := range values {
 		b.ClusterAffinityApplyConfiguration.ExcludeClusters = append(b.ClusterAffinityApplyConfiguration.ExcludeClusters, values[i])
-	}
-	return b
-}
-
-// WithOverflowAffinities adds the given value to the OverflowAffinities field in the declarative configuration
-// and returns the receiver, so that objects can be build by chaining "With" function invocations.
-// If called multiple times, values provided by each call will be appended to the OverflowAffinities field.
-func (b *ClusterAffinityTermApplyConfiguration) WithOverflowAffinities(values ...*OverflowClusterAffinityApplyConfiguration) *ClusterAffinityTermApplyConfiguration {
-	for i := range values {
-		if values[i] == nil {
-			panic("nil value passed to WithOverflowAffinities")
-		}
-		b.OverflowAffinities = append(b.OverflowAffinities, *values[i])
 	}
 	return b
 }

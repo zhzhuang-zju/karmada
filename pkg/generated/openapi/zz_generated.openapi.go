@@ -141,6 +141,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		policyv1alpha1.JSONPatchOperation{}.OpenAPIModelName():                          schema_pkg_apis_policy_v1alpha1_JSONPatchOperation(ref),
 		policyv1alpha1.LabelAnnotationOverrider{}.OpenAPIModelName():                    schema_pkg_apis_policy_v1alpha1_LabelAnnotationOverrider(ref),
 		policyv1alpha1.MatchCondition{}.OpenAPIModelName():                              schema_pkg_apis_policy_v1alpha1_MatchCondition(ref),
+		policyv1alpha1.OverflowClusterAffinity{}.OpenAPIModelName():                     schema_pkg_apis_policy_v1alpha1_OverflowClusterAffinity(ref),
 		policyv1alpha1.OverridePolicy{}.OpenAPIModelName():                              schema_pkg_apis_policy_v1alpha1_OverridePolicy(ref),
 		policyv1alpha1.OverridePolicyList{}.OpenAPIModelName():                          schema_pkg_apis_policy_v1alpha1_OverridePolicyList(ref),
 		policyv1alpha1.OverrideSpec{}.OpenAPIModelName():                                schema_pkg_apis_policy_v1alpha1_OverrideSpec(ref),
@@ -3735,12 +3736,26 @@ func schema_pkg_apis_policy_v1alpha1_ClusterAffinityTerm(ref common.ReferenceCal
 							},
 						},
 					},
+					"overflowAffinities": {
+						SchemaProps: spec.SchemaProps{
+							Description: "OverflowAffinities defines additional cluster groups that the scheduler can progressively include when the primary group (defined by the inline ClusterAffinity) has insufficient resources. Groups are expanded in order and contracted in reverse during scale-down. Can only be used together with the inline ClusterAffinity (the inline ClusterAffinity serves as the primary/preferred group). If a cluster appears in multiple OverflowClusterAffinity entries, it is scheduled according to the first entry in which it appears; subsequent occurrences of the same cluster are ignored.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref(policyv1alpha1.OverflowClusterAffinity{}.OpenAPIModelName()),
+									},
+								},
+							},
+						},
+					},
 				},
 				Required: []string{"affinityName"},
 			},
 		},
 		Dependencies: []string{
-			policyv1alpha1.FieldSelector{}.OpenAPIModelName(), metav1.LabelSelector{}.OpenAPIModelName()},
+			policyv1alpha1.FieldSelector{}.OpenAPIModelName(), policyv1alpha1.OverflowClusterAffinity{}.OpenAPIModelName(), metav1.LabelSelector{}.OpenAPIModelName()},
 	}
 }
 
@@ -4759,6 +4774,72 @@ func schema_pkg_apis_policy_v1alpha1_MatchCondition(ref common.ReferenceCallback
 				Required: []string{"conditionType", "operator", "statusValues"},
 			},
 		},
+	}
+}
+
+func schema_pkg_apis_policy_v1alpha1_OverflowClusterAffinity(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "OverflowClusterAffinity represents an overflow tier of candidate clusters.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"affinityName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "AffinityName is the name of the cluster group.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"labelSelector": {
+						SchemaProps: spec.SchemaProps{
+							Description: "LabelSelector is a filter to select member clusters by labels. If non-nil and non-empty, only the clusters match this filter will be selected.",
+							Ref:         ref(metav1.LabelSelector{}.OpenAPIModelName()),
+						},
+					},
+					"fieldSelector": {
+						SchemaProps: spec.SchemaProps{
+							Description: "FieldSelector is a filter to select member clusters by fields. The key(field) of the match expression should be 'provider', 'region', or 'zone', and the operator of the match expression should be 'In' or 'NotIn'. If non-nil and non-empty, only the clusters match this filter will be selected.",
+							Ref:         ref(policyv1alpha1.FieldSelector{}.OpenAPIModelName()),
+						},
+					},
+					"clusterNames": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ClusterNames is the list of clusters to be selected.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"exclude": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ExcludedClusters is the list of clusters to be ignored.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"affinityName"},
+			},
+		},
+		Dependencies: []string{
+			policyv1alpha1.FieldSelector{}.OpenAPIModelName(), metav1.LabelSelector{}.OpenAPIModelName()},
 	}
 }
 

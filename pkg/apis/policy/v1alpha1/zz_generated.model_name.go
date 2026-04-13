@@ -157,6 +157,11 @@ func (in MatchCondition) OpenAPIModelName() string {
 }
 
 // OpenAPIModelName returns the OpenAPI model name for this type.
+func (in OverflowClusterAffinity) OpenAPIModelName() string {
+	return "com.github.karmada-io.karmada.pkg.apis.policy.v1alpha1.OverflowClusterAffinity"
+}
+
+// OpenAPIModelName returns the OpenAPI model name for this type.
 func (in OverridePolicy) OpenAPIModelName() string {
 	return "com.github.karmada-io.karmada.pkg.apis.policy.v1alpha1.OverridePolicy"
 }

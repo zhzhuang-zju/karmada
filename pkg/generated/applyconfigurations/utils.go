@@ -204,6 +204,8 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &applyconfigurationspolicyv1alpha1.LabelAnnotationOverriderApplyConfiguration{}
 	case policyv1alpha1.SchemeGroupVersion.WithKind("MatchCondition"):
 		return &applyconfigurationspolicyv1alpha1.MatchConditionApplyConfiguration{}
+	case policyv1alpha1.SchemeGroupVersion.WithKind("OverflowClusterAffinity"):
+		return &applyconfigurationspolicyv1alpha1.OverflowClusterAffinityApplyConfiguration{}
 	case policyv1alpha1.SchemeGroupVersion.WithKind("OverridePolicy"):
 		return &applyconfigurationspolicyv1alpha1.OverridePolicyApplyConfiguration{}
 	case policyv1alpha1.SchemeGroupVersion.WithKind("Overriders"):

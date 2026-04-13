@@ -447,6 +447,132 @@ spec:
                               type: object
                           type: object
                           x-kubernetes-map-type: atomic
+                        overflowAffinities:
+                          description: |-
+                            OverflowAffinities defines additional cluster groups that the scheduler
+                            can progressively include when the primary group (defined by the inline
+                            ClusterAffinity) has insufficient resources. Groups are expanded in order
+                            and contracted in reverse during scale-down.
+                            Can only be used together with the inline ClusterAffinity (the inline
+                            ClusterAffinity serves as the primary/preferred group).
+                            If a cluster appears in multiple OverflowClusterAffinity entries, it is
+                            scheduled according to the first entry in which it appears; subsequent
+                            occurrences of the same cluster are ignored.
+                          items:
+                            description: OverflowClusterAffinity represents an overflow
+                              tier of candidate clusters.
+                            properties:
+                              affinityName:
+                                description: AffinityName is the name of the cluster
+                                  group.
+                                maxLength: 32
+                                minLength: 1
+                                type: string
+                              clusterNames:
+                                description: ClusterNames is the list of clusters
+                                  to be selected.
+                                items:
+                                  type: string
+                                type: array
+                              exclude:
+                                description: ExcludedClusters is the list of clusters
+                                  to be ignored.
+                                items:
+                                  type: string
+                                type: array
+                              fieldSelector:
+                                description: |-
+                                  FieldSelector is a filter to select member clusters by fields.
+                                  The key(field) of the match expression should be 'provider', 'region', or 'zone',
+                                  and the operator of the match expression should be 'In' or 'NotIn'.
+                                  If non-nil and non-empty, only the clusters match this filter will be selected.
+                                properties:
+                                  matchExpressions:
+                                    description: A list of field selector requirements.
+                                    items:
+                                      description: |-
+                                        A node selector requirement is a selector that contains values, a key, and an operator
+                                        that relates the key and values.
+                                      properties:
+                                        key:
+                                          description: The label key that the selector
+                                            applies to.
+                                          type: string
+                                        operator:
+                                          description: |-
+                                            Represents a key's relationship to a set of values.
+                                            Valid operators are In, NotIn, Exists, DoesNotExist. Gt, and Lt.
+                                          type: string
+                                        values:
+                                          description: |-
+                                            An array of string values. If the operator is In or NotIn,
+                                            the values array must be non-empty. If the operator is Exists or DoesNotExist,
+                                            the values array must be empty. If the operator is Gt or Lt, the values
+                                            array must have a single element, which will be interpreted as an integer.
+                                            This array is replaced during a strategic merge patch.
+                                          items:
+                                            type: string
+                                          type: array
+                                          x-kubernetes-list-type: atomic
+                                      required:
+                                      - key
+                                      - operator
+                                      type: object
+                                    type: array
+                                type: object
+                              labelSelector:
+                                description: |-
+                                  LabelSelector is a filter to select member clusters by labels.
+                                  If non-nil and non-empty, only the clusters match this filter will be selected.
+                                properties:
+                                  matchExpressions:
+                                    description: matchExpressions is a list of label
+                                      selector requirements. The requirements are
+                                      ANDed.
+                                    items:
+                                      description: |-
+                                        A label selector requirement is a selector that contains values, a key, and an operator that
+                                        relates the key and values.
+                                      properties:
+                                        key:
+                                          description: key is the label key that the
+                                            selector applies to.
+                                          type: string
+                                        operator:
+                                          description: |-
+                                            operator represents a key's relationship to a set of values.
+                                            Valid operators are In, NotIn, Exists and DoesNotExist.
+                                          type: string
+                                        values:
+                                          description: |-
+                                            values is an array of string values. If the operator is In or NotIn,
+                                            the values array must be non-empty. If the operator is Exists or DoesNotExist,
+                                            the values array must be empty. This array is replaced during a strategic
+                                            merge patch.
+                                          items:
+                                            type: string
+                                          type: array
+                                          x-kubernetes-list-type: atomic
+                                      required:
+                                      - key
+                                      - operator
+                                      type: object
+                                    type: array
+                                    x-kubernetes-list-type: atomic
+                                  matchLabels:
+                                    additionalProperties:
+                                      type: string
+                                    description: |-
+                                      matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels
+                                      map is equivalent to an element of matchExpressions, whose key field is "key", the
+                                      operator is "In", and the values array contains only "value". The requirements are ANDed.
+                                    type: object
+                                type: object
+                                x-kubernetes-map-type: atomic
+                            required:
+                            - affinityName
+                            type: object
+                          type: array
                       required:
                       - affinityName
                       type: object

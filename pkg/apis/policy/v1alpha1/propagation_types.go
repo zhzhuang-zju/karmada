@@ -600,6 +600,18 @@ type ClusterAffinityTerm struct {
 	AffinityName string `json:"affinityName"`
 
 	ClusterAffinity `json:",inline"`
+
+	// OverflowAffinities defines additional cluster groups that the scheduler
+	// can progressively include when the primary group (defined by the inline
+	// ClusterAffinity) has insufficient resources. Groups are expanded in order
+	// and contracted in reverse during scale-down.
+	// Can only be used together with the inline ClusterAffinity (the inline
+	// ClusterAffinity serves as the primary/preferred group).
+	// If a cluster appears in multiple OverflowClusterAffinity entries, it is
+	// scheduled according to the first entry in which it appears; subsequent
+	// occurrences of the same cluster are ignored.
+	// +optional
+	OverflowAffinities []OverflowClusterAffinity `json:"overflowAffinities,omitempty"`
 }
 
 // WorkloadAffinity defines inter-workload affinity and anti-affinity rules.
@@ -679,6 +691,17 @@ type WorkloadAffinityTerm struct {
 	//
 	// +required
 	GroupByLabelKey string `json:"groupByLabelKey"`
+}
+
+// OverflowClusterAffinity represents an overflow tier of candidate clusters.
+type OverflowClusterAffinity struct {
+	// AffinityName is the name of the cluster group.
+	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MaxLength=32
+	// +required
+	AffinityName string `json:"affinityName"`
+
+	ClusterAffinity `json:",inline"`
 }
 
 // ReplicaSchedulingType describes scheduling methods for the "replicas" in a resource.
