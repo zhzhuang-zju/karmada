@@ -64,10 +64,10 @@ import (
 
 var (
 	promoteLong = templates.LongDesc(`
-	Promote resources from legacy clusters to the Karmada control plane.
+	Promote resources from legacy clusters to the Karmada control plane. 
 	Requires the cluster to have been joined or registered.
 
-	If the resource already exists in the Karmada control plane,
+	If the resource already exists in the Karmada control plane, 
 	please edit PropagationPolicy and OverridePolicy to propagate it.
 	`)
 
