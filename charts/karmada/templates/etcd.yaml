@@ -96,6 +96,7 @@ spec:
             - --client-cert-auth=true
             - --key-file=/etc/kubernetes/pki/etcd/karmada.key
             - --trusted-ca-file=/etc/kubernetes/pki/etcd/server-ca.crt
+            - --log-level={{ .Values.etcd.internal.logLevel }}
             - --data-dir=/var/lib/etcd
             # Setting Golang's secure cipher suites as etcd's cipher suites.
             # They are obtained by the return value of the function CipherSuites() under the go/src/crypto/tls/cipher_suites.go package.

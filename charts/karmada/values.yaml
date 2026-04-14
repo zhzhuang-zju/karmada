@@ -193,6 +193,8 @@ scheduler:
     app: karmada-scheduler
   ## @param scheduler.replicaCount target replicas of the scheduler
   replicaCount: 1
+  ## @param scheduler.logVerbosity log verbosity level for the scheduler
+  logVerbosity: 2
   ## @param scheduler.podAnnotations annotations of the scheduler pods
   podAnnotations: {}
   ## @param scheduler.podLabels labels of the scheduler pods
@@ -255,6 +257,8 @@ webhook:
     app: karmada-webhook
   ## @param webhook.replicaCount target replicas
   replicaCount: 1
+  ## @param webhook.logVerbosity log verbosity level for the webhook
+  logVerbosity: 2
   ## @param webhook.podAnnotations annotations of the webhook pods
   podAnnotations: {}
   ## @param webhook.podLabels labels of the webhook pods
@@ -315,6 +319,8 @@ controllerManager:
     app: karmada-controller-manager
   ## @param controllerManager.replicaCount target replicas of the karmada-controller-manager
   replicaCount: 1
+  ## @param controllerManager.logVerbosity log verbosity level for the controller manager
+  logVerbosity: 2
   ## @param controllerManager.podAnnotations annotations of the karmada-controller-manager pods
   podAnnotations: {}
   ## @param controllerManager.podLabels labels of the karmada-controller-manager pods
@@ -382,6 +388,8 @@ apiServer:
   serviceAnnotations: {}
   ## @param apiServer.replicaCount target replicas of the karmada-apiserver
   replicaCount: 1
+  ## @param apiServer.logVerbosity log verbosity level for the apiserver
+  logVerbosity: 2
   ## @param apiServer.podAnnotations annotations of the karmada-apiserver pods
   podAnnotations: {}
   ## @param apiServer.podLabels labels of the karmada-apiserver pods
@@ -493,6 +501,8 @@ aggregatedApiServer:
     app: karmada-aggregated-apiserver
   ## @param aggregatedApiServer.replicaCount target replicas of the karmada-aggregated-apiserver
   replicaCount: 1
+  ## @param aggregatedApiServer.logVerbosity log verbosity level for the aggregated apiserver
+  logVerbosity: 2
   ## @param aggregatedApiServer.podAnnotations annotations of the karmada-aggregated-apiserver pods
   podAnnotations: {}
   ## @param aggregatedApiServer.podLabels labels of the karmada-aggregated-apiserver pods
@@ -553,6 +563,8 @@ metricsAdapter:
     app: karmada-metrics-adapter
   ## @param metricsAadpter.replicaCount target replicas of the karmada-mertics-adapter
   replicaCount: 1
+  ## @param metricsAdapter.logVerbosity log verbosity level for the metrics adapter
+  logVerbosity: 2
   ## @param metricsAadpter.podAnnotations annotations of the karmada-mertics-adapter pods
   podAnnotations: {}
   ## @param metricsAadpter.podLabels labels of the karmada-mertics-adapter pods
@@ -613,6 +625,8 @@ kubeControllerManager:
     app: kube-controller-manager
   ## @param kubeControllerManager.replicaCount target replicas of the kube-controller-manager
   replicaCount: 1
+  ## @param kubeControllerManager.logVerbosity log verbosity level for the kube-controller-manager
+  logVerbosity: 2
   ## @param kubeControllerManager.podAnnotations annotations of the kube-controller-manager pods
   podAnnotations: {}
   ## @param kubeControllerManager.podLabels labels of the kube-controller-manager pods
@@ -714,6 +728,8 @@ etcd:
         XXXXXXXXXXXXXXXXXXXXXXXXXXX
         -----END RSA PRIVATE KEY-----
   internal:
+    ## @param etcd.internal.logLevel log level for the internal etcd (debug, info, warn, error, panic, fatal)
+    logLevel: "info"
     ## @param etcd.internal.replicaCount target replicas
     replicaCount: 1
     ## @param image.registry etcd image registry
@@ -785,6 +801,8 @@ agent:
     app: karmada-agent
   ## @param agent.replicaCount target replicas
   replicaCount: 1
+  ## @param agent.logVerbosity log verbosity level for the agent
+  logVerbosity: 2
   ## @param agent.podAnnotations annotations of the agent pods
   podAnnotations: {}
   ## @param agent.podLabels labels of the agent pods
@@ -866,6 +884,8 @@ schedulerEstimator:
   ## @param schedulerEstimator.labels labels of the scheduler-estimator deployment
   labels:
     app: karmada-scheduler-estimator
+  ## @param schedulerEstimator.logVerbosity log verbosity level for the scheduler estimator
+  logVerbosity: 2
   ## @param schedulerEstimator.podAnnotations annotations of the scheduler-estimator pods
   podAnnotations: {}
   ## @param schedulerEstimator.podLabels labels of the scheduler-estimator pods
@@ -927,6 +947,8 @@ descheduler:
     app: karmada-descheduler
   ## @param descheduler.replicaCount target replicas of the descheduler
   replicaCount: 2
+  ## @param descheduler.logVerbosity log verbosity level for the descheduler
+  logVerbosity: 2
   ## @param descheduler.podAnnotations annotations of the descheduler pods
   podAnnotations: {}
   ## @param descheduler.podLabels labels of the descheduler pods
@@ -987,6 +1009,8 @@ search:
     app: karmada-search
   ## @param search.replicaCount target replicas
   replicaCount: 2
+  ## @param search.logVerbosity log verbosity level for the search
+  logVerbosity: 2
   ## @param search.podAnnotations annotations of the search pods
   podAnnotations: {}
   ## @param search.podLabels labels of the search pods

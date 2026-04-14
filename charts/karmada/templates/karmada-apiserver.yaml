@@ -73,6 +73,7 @@ spec:
             - --max-requests-inflight={{ .Values.apiServer.maxRequestsInflight }}
             - --max-mutating-requests-inflight={{ .Values.apiServer.maxMutatingRequestsInflight }}
             - --tls-min-version=VersionTLS13
+            - --v={{ .Values.apiServer.logVerbosity }}
             {{- if .Values.apiServer.encryptionAtRest.enabled }}
             - --encryption-provider-config={{ .Values.apiServer.encryptionAtRest.configFile }}
             {{- end }}
