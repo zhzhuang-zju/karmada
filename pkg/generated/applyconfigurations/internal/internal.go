@@ -902,6 +902,12 @@ var schemaYAML = typed.YAMLObject(`types:
     - name: labelSelector
       type:
         namedType: io.k8s.apimachinery.pkg.apis.meta.v1.LabelSelector
+    - name: overflowAffinities
+      type:
+        list:
+          elementType:
+            namedType: com.github.karmada-io.karmada.pkg.apis.policy.v1alpha1.OverflowClusterAffinity
+          elementRelationship: atomic
 - name: com.github.karmada-io.karmada.pkg.apis.policy.v1alpha1.ClusterFailoverBehavior
   map:
     fields:
@@ -1196,6 +1202,31 @@ var schemaYAML = typed.YAMLObject(`types:
           elementType:
             scalar: string
           elementRelationship: atomic
+- name: com.github.karmada-io.karmada.pkg.apis.policy.v1alpha1.OverflowClusterAffinity
+  map:
+    fields:
+    - name: affinityName
+      type:
+        scalar: string
+      default: ""
+    - name: clusterNames
+      type:
+        list:
+          elementType:
+            scalar: string
+          elementRelationship: atomic
+    - name: exclude
+      type:
+        list:
+          elementType:
+            scalar: string
+          elementRelationship: atomic
+    - name: fieldSelector
+      type:
+        namedType: com.github.karmada-io.karmada.pkg.apis.policy.v1alpha1.FieldSelector
+    - name: labelSelector
+      type:
+        namedType: io.k8s.apimachinery.pkg.apis.meta.v1.LabelSelector
 - name: com.github.karmada-io.karmada.pkg.apis.policy.v1alpha1.OverridePolicy
   map:
     fields:

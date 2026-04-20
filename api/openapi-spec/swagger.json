@@ -19280,6 +19280,14 @@
         "labelSelector": {
           "description": "LabelSelector is a filter to select member clusters by labels. If non-nil and non-empty, only the clusters match this filter will be selected.",
           "$ref": "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.LabelSelector"
+        },
+        "overflowAffinities": {
+          "description": "OverflowAffinities defines additional cluster groups that the scheduler can progressively include when the primary group (defined by the inline ClusterAffinity) has insufficient resources. Groups are expanded in order and contracted in reverse during scale-down. Can only be used together with the inline ClusterAffinity (the inline ClusterAffinity serves as the primary/preferred group). If a cluster appears in multiple OverflowClusterAffinity entries, it is scheduled according to the first entry in which it appears; subsequent occurrences of the same cluster are ignored.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/com.github.karmada-io.karmada.pkg.apis.policy.v1alpha1.OverflowClusterAffinity"
+          }
         }
       }
     },
@@ -19922,6 +19930,44 @@
             "type": "string",
             "default": ""
           }
+        }
+      }
+    },
+    "com.github.karmada-io.karmada.pkg.apis.policy.v1alpha1.OverflowClusterAffinity": {
+      "description": "OverflowClusterAffinity represents an overflow tier of candidate clusters.",
+      "type": "object",
+      "required": [
+        "affinityName"
+      ],
+      "properties": {
+        "affinityName": {
+          "description": "AffinityName is the name of the cluster group.",
+          "type": "string",
+          "default": ""
+        },
+        "clusterNames": {
+          "description": "ClusterNames is the list of clusters to be selected.",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "default": ""
+          }
+        },
+        "exclude": {
+          "description": "ExcludedClusters is the list of clusters to be ignored.",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "default": ""
+          }
+        },
+        "fieldSelector": {
+          "description": "FieldSelector is a filter to select member clusters by fields. The key(field) of the match expression should be 'provider', 'region', or 'zone', and the operator of the match expression should be 'In' or 'NotIn'. If non-nil and non-empty, only the clusters match this filter will be selected.",
+          "$ref": "#/definitions/com.github.karmada-io.karmada.pkg.apis.policy.v1alpha1.FieldSelector"
+        },
+        "labelSelector": {
+          "description": "LabelSelector is a filter to select member clusters by labels. If non-nil and non-empty, only the clusters match this filter will be selected.",
+          "$ref": "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.LabelSelector"
         }
       }
     },
