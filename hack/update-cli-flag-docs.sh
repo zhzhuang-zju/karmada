@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 2021 The Karmada Authors.
+# Copyright 2026 The Karmada Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,21 +13,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Regenerate component CLI flag reference Markdown:
+#   - docs/componentdocs/   (karmada-controller-manager, karmada-scheduler, ...)
+#
+# Usage:
+#   hack/update-cli-flag-docs.sh
 
 set -o errexit
 set -o nounset
 set -o pipefail
 
-REPO_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
+SCRIPT_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
+# shellcheck source=hack/util.sh
+source "${SCRIPT_ROOT}/hack/util.sh"
 
-# vendor should be updated first because we build code-gen tools from vendor.
-bash "$REPO_ROOT/hack/update-vendor.sh"
-bash "$REPO_ROOT/hack/update-codegen.sh"
-bash "$REPO_ROOT/hack/update-crdgen.sh"
-bash "$REPO_ROOT/hack/update-estimator-protobuf.sh"
-bash "$REPO_ROOT/hack/update-import-aliases.sh"
-bash "$REPO_ROOT/hack/update-swagger-docs.sh"
-bash "$REPO_ROOT/hack/update-cli-flag-docs.sh"
-bash "$REPO_ROOT/hack/update-lifted.sh"
-bash "$REPO_ROOT/hack/update-mocks.sh"
-bash "$REPO_ROOT/hack/update-gofmt.sh"
+util::verify_go_version
+
+COMPONENT_OUT="${SCRIPT_ROOT}/docs/componentdocs"
+mkdir -p "${COMPONENT_OUT}"
+
+cd "${SCRIPT_ROOT}"
+go run ./hack/tools/gencomponentdocs/ "${COMPONENT_OUT}" all
