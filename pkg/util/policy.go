@@ -25,3 +25,18 @@ func IsLazyActivationEnabled(activationPreference policyv1alpha1.ActivationPrefe
 	}
 	return activationPreference == policyv1alpha1.LazyActivation
 }
+
+// IsOverflowSupport judge whether the replica scheduling strategy supports overflow.
+func IsOverflowSupport(replicaScheduling *policyv1alpha1.ReplicaSchedulingStrategy) bool {
+	if replicaScheduling == nil || replicaScheduling.ReplicaSchedulingType != policyv1alpha1.ReplicaSchedulingTypeDivided {
+		return false
+	}
+
+	if replicaScheduling.ReplicaDivisionPreference == policyv1alpha1.ReplicaDivisionPreferenceWeighted &&
+		(replicaScheduling.WeightPreference == nil ||
+			len(replicaScheduling.WeightPreference.StaticWeightList) != 0 && replicaScheduling.WeightPreference.DynamicWeight == "") {
+		return false
+	}
+
+	return true
+}

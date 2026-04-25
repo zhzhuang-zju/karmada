@@ -23,6 +23,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 
 	"github.com/go-openapi/jsonpointer"
@@ -107,7 +108,7 @@ func ValidatePlacement(placement policyv1alpha1.Placement, fldPath *field.Path) 
 	}
 
 	allErrs = append(allErrs, ValidateClusterAffinity(placement.ClusterAffinity, fldPath.Child("clusterAffinity"))...)
-	allErrs = append(allErrs, ValidateClusterAffinities(placement.ClusterAffinities, fldPath.Child("clusterAffinities"))...)
+	allErrs = append(allErrs, ValidateClusterAffinities(placement.ClusterAffinities, placement.ReplicaScheduling, fldPath.Child("clusterAffinities"))...)
 	allErrs = append(allErrs, ValidateSpreadConstraint(placement.SpreadConstraints, fldPath.Child("spreadConstraints"))...)
 	allErrs = append(allErrs, ValidateWorkloadAffinity(placement.WorkloadAffinity, fldPath.Child("workloadAffinity"))...)
 	allErrs = append(allErrs, validateClusterTolerations(placement.ClusterTolerations, fldPath.Child("clusterTolerations"))...)
@@ -175,10 +176,11 @@ func ValidateClusterAffinity(affinity *policyv1alpha1.ClusterAffinity, fldPath *
 }
 
 // ValidateClusterAffinities validates clusterAffinities before creation or update.
-func ValidateClusterAffinities(affinities []policyv1alpha1.ClusterAffinityTerm, fldPath *field.Path) field.ErrorList {
+func ValidateClusterAffinities(affinities []policyv1alpha1.ClusterAffinityTerm, replicaScheduling *policyv1alpha1.ReplicaSchedulingStrategy, fldPath *field.Path) field.ErrorList {
 	var allErrs field.ErrorList
 
 	affinityNames := make(map[string]bool)
+	supportOverflow := util.IsOverflowSupport(replicaScheduling)
 	for index := range affinities {
 		for _, err := range validation.IsQualifiedName(affinities[index].AffinityName) {
 			allErrs = append(allErrs, field.Invalid(fldPath.Index(index), affinities[index].AffinityName, err))
@@ -190,7 +192,52 @@ func ValidateClusterAffinities(affinities []policyv1alpha1.ClusterAffinityTerm, 
 		}
 
 		allErrs = append(allErrs, ValidateClusterAffinity(&affinities[index].ClusterAffinity, fldPath.Index(index))...)
+		allErrs = append(allErrs, ValidateOverflowAffinities(affinities[index], supportOverflow, fldPath.Index(index))...)
 	}
+	return allErrs
+}
+
+// ValidateOverflowAffinities validates the overflowAffinities of a ClusterAffinityTerm.
+// It checks:
+// 1. OverflowAffinities can only be set when the inline ClusterAffinity is non-empty.
+// 2. OverflowAffinities requires a scheduling strategy that supports overflow (dynamic weight or aggregated).
+// 3. Each overflow affinity name must be a valid label key.
+// 4. Overflow affinity names must be unique and must not duplicate the primary group's affinityName.
+// 5. Each overflow affinity's ClusterAffinity is validated recursively.
+func ValidateOverflowAffinities(affinity policyv1alpha1.ClusterAffinityTerm, supportOverflow bool, fldPath *field.Path) field.ErrorList {
+	var allErrs field.ErrorList
+
+	if len(affinity.OverflowAffinities) == 0 {
+		return nil
+	}
+
+	// OverflowAffinities can only be set when ClusterAffinity is specified.
+	if reflect.DeepEqual(affinity.ClusterAffinity, policyv1alpha1.ClusterAffinity{}) {
+		allErrs = append(allErrs, field.Invalid(fldPath, affinity, "overflowAffinities can only be used together with the inline ClusterAffinity"))
+	}
+
+	// OverflowAffinities can only be used with dynamic weight or aggregated scheduling.
+	if !supportOverflow {
+		allErrs = append(allErrs, field.Invalid(fldPath.Child("overflowAffinities"), affinity.OverflowAffinities, "overflowAffinities can only be used together with dynamic weight or aggregated scheduling"))
+	}
+
+	// Validate overflow affinity names are unique.
+	overflowNames := map[string]bool{
+		affinity.AffinityName: true,
+	}
+	for oi, oa := range affinity.OverflowAffinities {
+		for _, err := range content.IsLabelKey(oa.AffinityName) {
+			allErrs = append(allErrs, field.Invalid(fldPath.Child("overflowAffinities").Index(oi), oa.AffinityName, err))
+		}
+		if _, exist := overflowNames[oa.AffinityName]; exist {
+			allErrs = append(allErrs, field.Invalid(fldPath, affinity, "overflow affinity name must be unique and must not duplicate the primary group's affinityName"))
+		} else {
+			overflowNames[oa.AffinityName] = true
+		}
+
+		allErrs = append(allErrs, ValidateClusterAffinity(&affinity.OverflowAffinities[oi].ClusterAffinity, fldPath.Child("overflowAffinities").Index(oi))...)
+	}
+
 	return allErrs
 }
 

@@ -1385,3 +1385,118 @@ func TestValidateWorkloadAffinity(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateOverflowAffinities(t *testing.T) {
+	tests := []struct {
+		name               string
+		affinity           policyv1alpha1.ClusterAffinityTerm
+		supportOverflow    bool
+		expectedErrCount   int
+		expectedErrStrings []string
+	}{
+		{
+			name: "no overflow affinities, no error",
+			affinity: policyv1alpha1.ClusterAffinityTerm{
+				AffinityName:    "primary",
+				ClusterAffinity: policyv1alpha1.ClusterAffinity{ClusterNames: []string{"member1"}},
+			},
+			supportOverflow:  true,
+			expectedErrCount: 0,
+		},
+		{
+			name: "valid overflow affinities with supportOverflow=true",
+			affinity: policyv1alpha1.ClusterAffinityTerm{
+				AffinityName:    "primary",
+				ClusterAffinity: policyv1alpha1.ClusterAffinity{ClusterNames: []string{"member1"}},
+				OverflowAffinities: []policyv1alpha1.OverflowClusterAffinity{
+					{AffinityName: "overflow-1", ClusterAffinity: policyv1alpha1.ClusterAffinity{ClusterNames: []string{"member2"}}},
+					{AffinityName: "overflow-2", ClusterAffinity: policyv1alpha1.ClusterAffinity{ClusterNames: []string{"member3"}}},
+				},
+			},
+			supportOverflow:  true,
+			expectedErrCount: 0,
+		},
+		{
+			name: "overflow affinities without ClusterAffinity",
+			affinity: policyv1alpha1.ClusterAffinityTerm{
+				AffinityName: "primary",
+				OverflowAffinities: []policyv1alpha1.OverflowClusterAffinity{
+					{AffinityName: "overflow-1", ClusterAffinity: policyv1alpha1.ClusterAffinity{ClusterNames: []string{"member2"}}},
+				},
+			},
+			supportOverflow:    true,
+			expectedErrCount:   1,
+			expectedErrStrings: []string{"overflowAffinities can only be used together with the inline ClusterAffinity"},
+		},
+		{
+			name: "overflow affinities with supportOverflow=false",
+			affinity: policyv1alpha1.ClusterAffinityTerm{
+				AffinityName:    "primary",
+				ClusterAffinity: policyv1alpha1.ClusterAffinity{ClusterNames: []string{"member1"}},
+				OverflowAffinities: []policyv1alpha1.OverflowClusterAffinity{
+					{AffinityName: "overflow-1", ClusterAffinity: policyv1alpha1.ClusterAffinity{ClusterNames: []string{"member2"}}},
+				},
+			},
+			supportOverflow:    false,
+			expectedErrCount:   1,
+			expectedErrStrings: []string{"overflowAffinities can only be used together with dynamic weight or aggregated scheduling"},
+		},
+		{
+			name: "duplicate overflow affinity names",
+			affinity: policyv1alpha1.ClusterAffinityTerm{
+				AffinityName:    "primary",
+				ClusterAffinity: policyv1alpha1.ClusterAffinity{ClusterNames: []string{"member1"}},
+				OverflowAffinities: []policyv1alpha1.OverflowClusterAffinity{
+					{AffinityName: "overflow-1", ClusterAffinity: policyv1alpha1.ClusterAffinity{ClusterNames: []string{"member2"}}},
+					{AffinityName: "overflow-1", ClusterAffinity: policyv1alpha1.ClusterAffinity{ClusterNames: []string{"member3"}}},
+				},
+			},
+			supportOverflow:    true,
+			expectedErrCount:   1,
+			expectedErrStrings: []string{"overflow affinity name must be unique and must not duplicate the primary group's affinityName"},
+		},
+		{
+			name: "overflow affinity name duplicates primary group's affinityName",
+			affinity: policyv1alpha1.ClusterAffinityTerm{
+				AffinityName:    "primary",
+				ClusterAffinity: policyv1alpha1.ClusterAffinity{ClusterNames: []string{"member1"}},
+				OverflowAffinities: []policyv1alpha1.OverflowClusterAffinity{
+					{AffinityName: "primary", ClusterAffinity: policyv1alpha1.ClusterAffinity{ClusterNames: []string{"member2"}}},
+				},
+			},
+			supportOverflow:    true,
+			expectedErrCount:   1,
+			expectedErrStrings: []string{"overflow affinity name must be unique and must not duplicate the primary group's affinityName"},
+		},
+		{
+			name: "multiple errors: empty ClusterAffinity and duplicate names",
+			affinity: policyv1alpha1.ClusterAffinityTerm{
+				AffinityName: "primary",
+				OverflowAffinities: []policyv1alpha1.OverflowClusterAffinity{
+					{AffinityName: "overflow-1", ClusterAffinity: policyv1alpha1.ClusterAffinity{ClusterNames: []string{"member2"}}},
+					{AffinityName: "overflow-1", ClusterAffinity: policyv1alpha1.ClusterAffinity{ClusterNames: []string{"member3"}}},
+				},
+			},
+			supportOverflow: true,
+			expectedErrCount:  2,
+			expectedErrStrings: []string{
+				"overflowAffinities can only be used together with the inline ClusterAffinity",
+				"overflow affinity name must be unique and must not duplicate the primary group's affinityName",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			errs := ValidateOverflowAffinities(tt.affinity, tt.supportOverflow, field.NewPath("spec").Child("placement").Child("clusterAffinities").Index(0))
+			assert.Len(t, errs, tt.expectedErrCount)
+			if len(tt.expectedErrStrings) > 0 {
+				errStr := errs.ToAggregate().Error()
+				for _, expected := range tt.expectedErrStrings {
+					assert.Contains(t, errStr, expected)
+				}
+			}
+		})
+	}
+}
+
