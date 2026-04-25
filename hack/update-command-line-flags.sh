@@ -13,11 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Regenerate component CLI flag reference Markdown:
-#   - docs/componentdocs/   (karmada-controller-manager, karmada-scheduler, ...)
+# Regenerate component command-line flag reference Markdown:
+#   - docs/command-line-flags/   (karmada-controller-manager, karmada-scheduler, ...)
 #
 # Usage:
-#   hack/update-cli-flag-docs.sh
+#   hack/update-command-line-flags.sh
 
 set -o errexit
 set -o nounset
@@ -29,7 +29,7 @@ source "${SCRIPT_ROOT}/hack/util.sh"
 
 util::verify_go_version
 
-COMPONENT_OUT="${SCRIPT_ROOT}/docs/componentdocs"
+COMPONENT_OUT="${SCRIPT_ROOT}/docs/command-line-flags"
 mkdir -p "${COMPONENT_OUT}"
 
 cd "${SCRIPT_ROOT}"
