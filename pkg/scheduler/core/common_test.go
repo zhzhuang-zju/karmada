@@ -36,6 +36,7 @@ func TestSelectClusters(t *testing.T) {
 		clustersScore  framework.ClusterScoreList
 		placement      *policyv1alpha1.Placement
 		spec           *workv1alpha2.ResourceBindingSpec
+		status         *workv1alpha2.ResourceBindingStatus
 		expectedResult []*clusterv1alpha1.Cluster
 		expectedError  bool
 	}{
@@ -47,6 +48,7 @@ func TestSelectClusters(t *testing.T) {
 			},
 			placement: &policyv1alpha1.Placement{},
 			spec:      &workv1alpha2.ResourceBindingSpec{},
+			status:    &workv1alpha2.ResourceBindingStatus{},
 			expectedResult: []*clusterv1alpha1.Cluster{
 				{ObjectMeta: metav1.ObjectMeta{Name: "cluster1"}},
 				{ObjectMeta: metav1.ObjectMeta{Name: "cluster2"}},
@@ -71,7 +73,8 @@ func TestSelectClusters(t *testing.T) {
 					},
 				},
 			},
-			spec: &workv1alpha2.ResourceBindingSpec{},
+			spec:   &workv1alpha2.ResourceBindingSpec{},
+			status: &workv1alpha2.ResourceBindingStatus{},
 			expectedResult: []*clusterv1alpha1.Cluster{
 				{ObjectMeta: metav1.ObjectMeta{Name: "cluster2"}},
 			},
@@ -88,10 +91,58 @@ func TestSelectClusters(t *testing.T) {
 					ClusterNames: []string{"cluster1", "cluster3"},
 				},
 			},
-			spec: &workv1alpha2.ResourceBindingSpec{},
+			spec:   &workv1alpha2.ResourceBindingSpec{},
+			status: &workv1alpha2.ResourceBindingStatus{},
 			expectedResult: []*clusterv1alpha1.Cluster{
 				{ObjectMeta: metav1.ObjectMeta{Name: "cluster1"}},
 				{ObjectMeta: metav1.ObjectMeta{Name: "cluster3"}},
+			},
+			expectedError: false,
+		},
+		{
+			name: "select clusters with overflow affinities",
+			clustersScore: framework.ClusterScoreList{
+				{Cluster: &clusterv1alpha1.Cluster{ObjectMeta: metav1.ObjectMeta{Name: "cluster1"}}, Score: 10},
+				{Cluster: &clusterv1alpha1.Cluster{ObjectMeta: metav1.ObjectMeta{Name: "cluster2"}}, Score: 20},
+			},
+			placement: &policyv1alpha1.Placement{
+				ReplicaScheduling: &policyv1alpha1.ReplicaSchedulingStrategy{
+					ReplicaSchedulingType:     policyv1alpha1.ReplicaSchedulingTypeDivided,
+					ReplicaDivisionPreference: policyv1alpha1.ReplicaDivisionPreferenceWeighted,
+					WeightPreference: &policyv1alpha1.ClusterPreferences{
+						DynamicWeight: policyv1alpha1.DynamicWeightByAvailableReplicas,
+					},
+				},
+				SpreadConstraints: []policyv1alpha1.SpreadConstraint{
+					{
+						SpreadByField: policyv1alpha1.SpreadByFieldCluster,
+						MaxGroups:     1,
+						MinGroups:     1,
+					},
+				},
+				ClusterAffinities: []policyv1alpha1.ClusterAffinityTerm{
+					{
+						AffinityName: "affinity1",
+						ClusterAffinity: policyv1alpha1.ClusterAffinity{
+							ClusterNames: []string{"cluster1"},
+						},
+						OverflowAffinities: []policyv1alpha1.OverflowClusterAffinity{
+							{
+								AffinityName: "overflow",
+								ClusterAffinity: policyv1alpha1.ClusterAffinity{
+									ClusterNames: []string{"cluster2"},
+								},
+							},
+						},
+					},
+				},
+			},
+			spec: &workv1alpha2.ResourceBindingSpec{},
+			status: &workv1alpha2.ResourceBindingStatus{
+				SchedulerObservedAffinityName: "affinity1",
+			},
+			expectedResult: []*clusterv1alpha1.Cluster{
+				{ObjectMeta: metav1.ObjectMeta{Name: "cluster1"}},
 			},
 			expectedError: false,
 		},
@@ -99,7 +150,8 @@ func TestSelectClusters(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := SelectClusters(tt.clustersScore, tt.placement, tt.spec)
+			tt.spec.Placement = tt.placement
+			result, err := SelectClusters(tt.clustersScore, tt.placement, tt.spec, tt.status)
 
 			if tt.expectedError {
 				assert.Error(t, err)
@@ -172,6 +224,181 @@ func TestAssignReplicas(t *testing.T) {
 			status:         &workv1alpha2.ResourceBindingStatus{},
 			expectedResult: []workv1alpha2.TargetCluster{{Name: ClusterMember1}, {Name: ClusterMember2}},
 			expectedError:  false,
+		},
+		{
+			name: "Overflow: primary group has enough capacity, no overflow needed",
+			clusters: []spreadconstraint.ClusterDetailInfo{
+				{Name: ClusterMember1, Cluster: helper.NewCluster(ClusterMember1), OverflowOrder: 0, AvailableReplicas: 10, AllocatableReplicas: 10},
+				{Name: ClusterMember2, Cluster: helper.NewCluster(ClusterMember2), OverflowOrder: 1, AvailableReplicas: 10, AllocatableReplicas: 10},
+			},
+			spec: &workv1alpha2.ResourceBindingSpec{
+				Replicas: 5,
+				Placement: &policyv1alpha1.Placement{
+					ReplicaScheduling: &policyv1alpha1.ReplicaSchedulingStrategy{
+						ReplicaSchedulingType:     policyv1alpha1.ReplicaSchedulingTypeDivided,
+						ReplicaDivisionPreference: policyv1alpha1.ReplicaDivisionPreferenceWeighted,
+						WeightPreference: &policyv1alpha1.ClusterPreferences{
+							DynamicWeight: policyv1alpha1.DynamicWeightByAvailableReplicas,
+						},
+					},
+					ClusterAffinities: []policyv1alpha1.ClusterAffinityTerm{
+						{
+							AffinityName: "affinity1",
+							ClusterAffinity: policyv1alpha1.ClusterAffinity{
+								ClusterNames: []string{ClusterMember1},
+							},
+							OverflowAffinities: []policyv1alpha1.OverflowClusterAffinity{
+								{
+									AffinityName: "overflow",
+									ClusterAffinity: policyv1alpha1.ClusterAffinity{
+										ClusterNames: []string{ClusterMember2},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			status: &workv1alpha2.ResourceBindingStatus{
+				SchedulerObservedAffinityName: "affinity1",
+			},
+			expectedResult: []workv1alpha2.TargetCluster{{Name: ClusterMember1, Replicas: 5}},
+			expectedError:  false,
+		},
+		{
+			name: "Overflow: primary group capacity exhausted, remaining replicas overflow to next tier",
+			clusters: []spreadconstraint.ClusterDetailInfo{
+				{Name: ClusterMember1, Cluster: helper.NewCluster(ClusterMember1), OverflowOrder: 0, AvailableReplicas: 2, AllocatableReplicas: 2},
+				{Name: ClusterMember2, Cluster: helper.NewCluster(ClusterMember2), OverflowOrder: 1, AvailableReplicas: 10, AllocatableReplicas: 10},
+			},
+			spec: &workv1alpha2.ResourceBindingSpec{
+				Replicas: 5,
+				Placement: &policyv1alpha1.Placement{
+					ReplicaScheduling: &policyv1alpha1.ReplicaSchedulingStrategy{
+						ReplicaSchedulingType:     policyv1alpha1.ReplicaSchedulingTypeDivided,
+						ReplicaDivisionPreference: policyv1alpha1.ReplicaDivisionPreferenceWeighted,
+						WeightPreference: &policyv1alpha1.ClusterPreferences{
+							DynamicWeight: policyv1alpha1.DynamicWeightByAvailableReplicas,
+						},
+					},
+					ClusterAffinities: []policyv1alpha1.ClusterAffinityTerm{
+						{
+							AffinityName: "affinity1",
+							ClusterAffinity: policyv1alpha1.ClusterAffinity{
+								ClusterNames: []string{ClusterMember1},
+							},
+							OverflowAffinities: []policyv1alpha1.OverflowClusterAffinity{
+								{
+									AffinityName: "overflow",
+									ClusterAffinity: policyv1alpha1.ClusterAffinity{
+										ClusterNames: []string{ClusterMember2},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			status: &workv1alpha2.ResourceBindingStatus{
+				SchedulerObservedAffinityName: "affinity1",
+			},
+			expectedResult: []workv1alpha2.TargetCluster{
+				{Name: ClusterMember1, Replicas: 2},
+				{Name: ClusterMember2, Replicas: 3},
+			},
+			expectedError: false,
+		},
+		{
+			name: "Overflow: all tiers exhausted, scheduling fails",
+			clusters: []spreadconstraint.ClusterDetailInfo{
+				{Name: ClusterMember1, Cluster: helper.NewCluster(ClusterMember1), OverflowOrder: 0, AvailableReplicas: 2, AllocatableReplicas: 2},
+				{Name: ClusterMember2, Cluster: helper.NewCluster(ClusterMember2), OverflowOrder: 1, AvailableReplicas: 2, AllocatableReplicas: 2},
+			},
+			spec: &workv1alpha2.ResourceBindingSpec{
+				Replicas: 10,
+				Placement: &policyv1alpha1.Placement{
+					ReplicaScheduling: &policyv1alpha1.ReplicaSchedulingStrategy{
+						ReplicaSchedulingType:     policyv1alpha1.ReplicaSchedulingTypeDivided,
+						ReplicaDivisionPreference: policyv1alpha1.ReplicaDivisionPreferenceWeighted,
+						WeightPreference: &policyv1alpha1.ClusterPreferences{
+							DynamicWeight: policyv1alpha1.DynamicWeightByAvailableReplicas,
+						},
+					},
+					ClusterAffinities: []policyv1alpha1.ClusterAffinityTerm{
+						{
+							AffinityName: "affinity1",
+							ClusterAffinity: policyv1alpha1.ClusterAffinity{
+								ClusterNames: []string{ClusterMember1},
+							},
+							OverflowAffinities: []policyv1alpha1.OverflowClusterAffinity{
+								{
+									AffinityName: "overflow",
+									ClusterAffinity: policyv1alpha1.ClusterAffinity{
+										ClusterNames: []string{ClusterMember2},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			status: &workv1alpha2.ResourceBindingStatus{
+				SchedulerObservedAffinityName: "affinity1",
+			},
+			expectedResult: nil,
+			expectedError:  true,
+			expectedErrMsg: "Clusters available replicas are not enough to schedule",
+		},
+		{
+			name: "Overflow: AvailableReplicas greater than AllocatableReplicas due to previously assigned replicas",
+			// cluster1 had 3 replicas previously assigned (spec.Clusters), so:
+			//   AvailableReplicas = AllocatableReplicas(2) + AssignedReplicas(3) = 5
+			// availableReplicasPerTier[0] = 5, so specCopy.Replicas = min(8, 5) = 5
+			// Inside the tier, steady scale-up: targetReplicas = 5 - 3 = 2, assigns 2 more to cluster1 → cluster1 total = 5
+			// Remaining = 8 - 5 = 3 overflows to cluster2
+			clusters: []spreadconstraint.ClusterDetailInfo{
+				{Name: ClusterMember1, Cluster: helper.NewCluster(ClusterMember1), OverflowOrder: 0, AvailableReplicas: 5, AllocatableReplicas: 2},
+				{Name: ClusterMember2, Cluster: helper.NewCluster(ClusterMember2), OverflowOrder: 1, AvailableReplicas: 10, AllocatableReplicas: 10},
+			},
+			spec: &workv1alpha2.ResourceBindingSpec{
+				Replicas: 8,
+				Clusters: []workv1alpha2.TargetCluster{
+					{Name: ClusterMember1, Replicas: 3},
+				},
+				Placement: &policyv1alpha1.Placement{
+					ReplicaScheduling: &policyv1alpha1.ReplicaSchedulingStrategy{
+						ReplicaSchedulingType:     policyv1alpha1.ReplicaSchedulingTypeDivided,
+						ReplicaDivisionPreference: policyv1alpha1.ReplicaDivisionPreferenceWeighted,
+						WeightPreference: &policyv1alpha1.ClusterPreferences{
+							DynamicWeight: policyv1alpha1.DynamicWeightByAvailableReplicas,
+						},
+					},
+					ClusterAffinities: []policyv1alpha1.ClusterAffinityTerm{
+						{
+							AffinityName: "affinity1",
+							ClusterAffinity: policyv1alpha1.ClusterAffinity{
+								ClusterNames: []string{ClusterMember1},
+							},
+							OverflowAffinities: []policyv1alpha1.OverflowClusterAffinity{
+								{
+									AffinityName: "overflow",
+									ClusterAffinity: policyv1alpha1.ClusterAffinity{
+										ClusterNames: []string{ClusterMember2},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			status: &workv1alpha2.ResourceBindingStatus{
+				SchedulerObservedAffinityName: "affinity1",
+			},
+			expectedResult: []workv1alpha2.TargetCluster{
+				{Name: ClusterMember1, Replicas: 5},
+				{Name: ClusterMember2, Replicas: 3},
+			},
+			expectedError: false,
 		},
 		{
 			name: "Unsupported replica scheduling strategy",
