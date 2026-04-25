@@ -23,6 +23,7 @@ import (
 	"sync/atomic"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/component-helpers/scheduling/corev1/nodeaffinity"
 	"k8s.io/klog/v2"
 
 	"github.com/karmada-io/karmada/pkg/estimator"
@@ -77,7 +78,20 @@ func (pl *nodeResourceEstimator) Estimate(ctx context.Context, snapshot *schedca
 		return 0, framework.AsResult(err)
 	}
 
-	affinity, tolerations := estimator.GetAffinityAndTolerations(requirements.NodeClaim)
+	var affinity nodeaffinity.RequiredNodeAffinity
+	var tolerations []corev1.Toleration
+	var resourceRequest corev1.ResourceList
+	if requirements != nil {
+		affinity, tolerations, err = estimator.GetAffinityAndTolerations(requirements.NodeClaim)
+		if err != nil {
+			return 0, framework.AsResult(err)
+		}
+
+		resourceRequest, err = requirements.UnmarshalResourceRequest()
+		if err != nil {
+			return 0, framework.AsResult(err)
+		}
+	}
 
 	var res int32
 	processNode := func(i int) {
@@ -85,7 +99,7 @@ func (pl *nodeResourceEstimator) Estimate(ctx context.Context, snapshot *schedca
 		if !estimator.MatchNode(node, affinity, tolerations) {
 			return
 		}
-		maxReplica := pl.nodeMaxAvailableReplica(node, requirements.ResourceRequest)
+		maxReplica := pl.nodeMaxAvailableReplica(node, resourceRequest)
 		atomic.AddInt32(&res, maxReplica)
 	}
 	pl.parallelizer.Until(ctx, len(allNodes), processNode)
@@ -113,7 +127,7 @@ func getNodeAvailableResource(node *schedulerframework.NodeInfo) *util.Resource 
 
 // EstimateComponents estimates the maximum number of complete component sets that can be scheduled.
 // It returns the number of sets that can fit on the available node resources.
-func (pl *nodeResourceEstimator) EstimateComponents(_ context.Context, snapshot *schedcache.Snapshot, components []pb.Component, _ string) (int32, *framework.Result) {
+func (pl *nodeResourceEstimator) EstimateComponents(_ context.Context, snapshot *schedcache.Snapshot, components []*pb.Component, _ string) (int32, *framework.Result) {
 	if !pl.enabled {
 		return pl.disabledResult()
 	}
@@ -128,7 +142,10 @@ func (pl *nodeResourceEstimator) EstimateComponents(_ context.Context, snapshot 
 		return 0, framework.AsResult(err)
 	}
 
-	sets := estimator.NewSchedulingSimulator(nodes).SimulateScheduling(components, math.MaxInt32)
+	sets, err := estimator.NewSchedulingSimulator(nodes).SimulateScheduling(components, math.MaxInt32)
+	if err != nil {
+		return 0, framework.AsResult(err)
+	}
 	if sets == 0 {
 		return 0, framework.NewResult(framework.Unschedulable, "no enough resources")
 	}

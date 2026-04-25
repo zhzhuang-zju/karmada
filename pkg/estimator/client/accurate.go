@@ -97,7 +97,7 @@ func (se *SchedulerEstimator) maxAvailableComponentSets(ctx context.Context, clu
 
 	pbReq := &pb.MaxAvailableComponentSetsRequest{
 		Cluster:    cluster,
-		Components: make([]pb.Component, 0, len(components)),
+		Components: make([]*pb.Component, 0, len(components)),
 		Namespace:  namespace,
 	}
 
@@ -108,10 +108,14 @@ func (se *SchedulerEstimator) maxAvailableComponentSets(ctx context.Context, clu
 			cr = comp.ReplicaRequirements.DeepCopy()
 		}
 
-		pbReq.Components = append(pbReq.Components, pb.Component{
+		replicaRequirements, err := toPBReplicaRequirements(cr)
+		if err != nil {
+			return 0, err
+		}
+		pbReq.Components = append(pbReq.Components, &pb.Component{
 			Name:                comp.Name,
 			Replicas:            comp.Replicas,
-			ReplicaRequirements: toPBReplicaRequirements(cr),
+			ReplicaRequirements: replicaRequirements,
 		})
 	}
 
@@ -122,22 +126,29 @@ func (se *SchedulerEstimator) maxAvailableComponentSets(ctx context.Context, clu
 	return res.MaxSets, nil
 }
 
-// toPBReplicaRequirements converts the API ComponentReplicaRequirements to the pb.ComponentReplicaRequirements value.
-func toPBReplicaRequirements(cr *workv1alpha2.ComponentReplicaRequirements) pb.ComponentReplicaRequirements {
-	var out pb.ComponentReplicaRequirements
+// toPBReplicaRequirements converts the API ComponentReplicaRequirements to the pb.ComponentReplicaRequirements pointer.
+func toPBReplicaRequirements(cr *workv1alpha2.ComponentReplicaRequirements) (*pb.ComponentReplicaRequirements, error) {
 	if cr == nil {
-		return out
+		return nil, nil
 	}
-	out.ResourceRequest = cr.ResourceRequest
-	out.PriorityClassName = cr.PriorityClassName
+	out := &pb.ComponentReplicaRequirements{
+		PriorityClassName: cr.PriorityClassName,
+	}
+	if err := out.SetResourceRequest(cr.ResourceRequest); err != nil {
+		return nil, err
+	}
 	if cr.NodeClaim != nil {
 		out.NodeClaim = &pb.NodeClaim{
-			NodeAffinity: cr.NodeClaim.HardNodeAffinity,
 			NodeSelector: cr.NodeClaim.NodeSelector,
-			Tolerations:  cr.NodeClaim.Tolerations,
+		}
+		if err := out.NodeClaim.SetNodeAffinity(cr.NodeClaim.HardNodeAffinity); err != nil {
+			return nil, err
+		}
+		if err := out.NodeClaim.SetTolerations(cr.NodeClaim.Tolerations); err != nil {
+			return nil, err
 		}
 	}
-	return out
+	return out, nil
 }
 
 func (se *SchedulerEstimator) maxAvailableReplicas(ctx context.Context, cluster string, replicaRequirements *workv1alpha2.ReplicaRequirements) (int32, error) {
@@ -147,18 +158,25 @@ func (se *SchedulerEstimator) maxAvailableReplicas(ctx context.Context, cluster 
 	}
 
 	req := &pb.MaxAvailableReplicasRequest{
-		Cluster:             cluster,
-		ReplicaRequirements: pb.ReplicaRequirements{},
+		Cluster: cluster,
 	}
 	if replicaRequirements != nil {
-		req.ReplicaRequirements.ResourceRequest = replicaRequirements.ResourceRequest
-		req.ReplicaRequirements.Namespace = replicaRequirements.Namespace
-		req.ReplicaRequirements.PriorityClassName = replicaRequirements.PriorityClassName
+		req.ReplicaRequirements = &pb.ReplicaRequirements{
+			Namespace:         replicaRequirements.Namespace,
+			PriorityClassName: replicaRequirements.PriorityClassName,
+		}
+		if err = req.ReplicaRequirements.SetResourceRequest(replicaRequirements.ResourceRequest); err != nil {
+			return UnauthenticReplica, err
+		}
 		if replicaRequirements.NodeClaim != nil {
 			req.ReplicaRequirements.NodeClaim = &pb.NodeClaim{
-				NodeAffinity: replicaRequirements.NodeClaim.HardNodeAffinity,
 				NodeSelector: replicaRequirements.NodeClaim.NodeSelector,
-				Tolerations:  replicaRequirements.NodeClaim.Tolerations,
+			}
+			if err = req.ReplicaRequirements.NodeClaim.SetNodeAffinity(replicaRequirements.NodeClaim.HardNodeAffinity); err != nil {
+				return UnauthenticReplica, err
+			}
+			if err = req.ReplicaRequirements.NodeClaim.SetTolerations(replicaRequirements.NodeClaim.Tolerations); err != nil {
+				return UnauthenticReplica, err
 			}
 		}
 	}
@@ -182,13 +200,13 @@ func (se *SchedulerEstimator) maxUnscheduableReplicas(
 
 	req := &pb.UnschedulableReplicasRequest{
 		Cluster: cluster,
-		Resource: pb.ObjectReference{
-			APIVersion: reference.APIVersion,
+		Resource: &pb.ObjectReference{
+			ApiVersion: reference.APIVersion,
 			Kind:       reference.Kind,
 			Namespace:  reference.Namespace,
 			Name:       reference.Name,
 		},
-		UnschedulableThreshold: threshold,
+		UnschedulableThreshold: int64(threshold),
 	}
 	res, err := client.GetUnschedulableReplicas(ctx, req)
 	if err != nil {

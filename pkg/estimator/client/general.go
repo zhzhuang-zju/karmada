@@ -179,16 +179,20 @@ func getMaximumSetsBasedOnResourceModels(cluster *clusterv1alpha1.Cluster, compo
 		return -1, err
 	}
 
-	pbComponents := make([]pb.Component, 0, len(components))
+	pbComponents := make([]*pb.Component, 0, len(components))
 	for _, comp := range components {
-		pbComponents = append(pbComponents, pb.Component{
-			Name:                comp.Name,
-			Replicas:            comp.Replicas,
-			ReplicaRequirements: toPBReplicaRequirements(comp.ReplicaRequirements),
-		})
+		component := &pb.Component{
+			Name:     comp.Name,
+			Replicas: comp.Replicas,
+		}
+		component.ReplicaRequirements, err = toPBReplicaRequirements(comp.ReplicaRequirements)
+		if err != nil {
+			return -1, err
+		}
+		pbComponents = append(pbComponents, component)
 	}
 
-	return estimator.NewSchedulingSimulator(nodes).SimulateScheduling(pbComponents, upperBound), nil
+	return estimator.NewSchedulingSimulator(nodes).SimulateScheduling(pbComponents, upperBound)
 }
 
 // buildModelNodes constructs identical nodes for each model grade using its Min vector,
