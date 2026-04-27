@@ -95,11 +95,8 @@ func TestKarmadaSearchAddonStatus(t *testing.T) {
 			name: "Status_WithoutAAAPIServiceOnKarmadaControlplane_AddonDisabledStatus",
 			listOpts: &addoninit.CommandAddonsListOption{
 				GlobalCommandOptions: addoninit.GlobalCommandOptions{
-					Namespace:     namespace,
-					KubeClientSet: fakeclientset.NewClientset(),
-					//nolint:staticcheck
-					// Note: disable `deprecation` check SA1019 until we bump to Kuberentes v1.36.
-					// Tracked by: https://github.com/karmada-io/karmada/issues/7009
+					Namespace:                  namespace,
+					KubeClientSet:              fakeclientset.NewClientset(),
 					KarmadaAggregatorClientSet: fakeAggregator.NewSimpleClientset(),
 				},
 			},
@@ -112,11 +109,8 @@ func TestKarmadaSearchAddonStatus(t *testing.T) {
 			name: "Status_WithoutAvailableAAAPIServiceServiceOnKarmadaControlPlane_AddonUnhealthyStatus",
 			listOpts: &addoninit.CommandAddonsListOption{
 				GlobalCommandOptions: addoninit.GlobalCommandOptions{
-					Namespace:     namespace,
-					KubeClientSet: fakeclientset.NewClientset(),
-					//nolint:staticcheck
-					// Note: disable `deprecation` check SA1019 until we bump to Kuberentes v1.36.
-					// Tracked by: https://github.com/karmada-io/karmada/issues/7009
+					Namespace:                  namespace,
+					KubeClientSet:              fakeclientset.NewClientset(),
 					KarmadaAggregatorClientSet: fakeAggregator.NewSimpleClientset(),
 				},
 			},
@@ -137,11 +131,8 @@ func TestKarmadaSearchAddonStatus(t *testing.T) {
 			name: "Status_WithAllAPIServicesAreAvailable_AddonEnabledStatus",
 			listOpts: &addoninit.CommandAddonsListOption{
 				GlobalCommandOptions: addoninit.GlobalCommandOptions{
-					Namespace:     namespace,
-					KubeClientSet: fakeclientset.NewClientset(),
-					//nolint:staticcheck
-					// Note: disable `deprecation` check SA1019 until we bump to Kuberentes v1.36.
-					// Tracked by: https://github.com/karmada-io/karmada/issues/7009
+					Namespace:                  namespace,
+					KubeClientSet:              fakeclientset.NewClientset(),
 					KarmadaAggregatorClientSet: fakeAggregator.NewSimpleClientset(),
 				},
 			},
