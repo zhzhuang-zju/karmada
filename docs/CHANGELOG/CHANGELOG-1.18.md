@@ -2,9 +2,9 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
-- [v1.18.0-alpha.2](#v1180-alpha2)
-  - [Downloads for v1.18.0-alpha.2](#downloads-for-v1180-alpha2)
-  - [Changelog since v1.18.0-alpha.1](#changelog-since-v1180-alpha1)
+- [v1.18.0-beta.0](#v1180-beta0)
+  - [Downloads for v1.18.0-beta.0](#downloads-for-v1180-beta0)
+  - [Changelog since v1.18.0-alpha.2](#changelog-since-v1180-alpha2)
   - [Urgent Update Notes](#urgent-update-notes)
   - [Changes by Kind](#changes-by-kind)
     - [API Changes](#api-changes)
@@ -17,9 +17,9 @@
     - [Helm Charts](#helm-charts)
     - [Instrumentation](#instrumentation)
     - [Performance](#performance)
-- [v1.18.0-alpha.1](#v1180-alpha1)
-  - [Downloads for v1.18.0-alpha.1](#downloads-for-v1180-alpha1)
-  - [Changelog since v1.18.0-alpha.0](#changelog-since-v1180-alpha0)
+- [v1.18.0-alpha.2](#v1180-alpha2)
+  - [Downloads for v1.18.0-alpha.2](#downloads-for-v1180-alpha2)
+  - [Changelog since v1.18.0-alpha.1](#changelog-since-v1180-alpha1)
   - [Urgent Update Notes](#urgent-update-notes-1)
   - [Changes by Kind](#changes-by-kind-1)
     - [API Changes](#api-changes-1)
@@ -32,8 +32,71 @@
     - [Helm Charts](#helm-charts-1)
     - [Instrumentation](#instrumentation-1)
     - [Performance](#performance-1)
+- [v1.18.0-alpha.1](#v1180-alpha1)
+  - [Downloads for v1.18.0-alpha.1](#downloads-for-v1180-alpha1)
+  - [Changelog since v1.18.0-alpha.0](#changelog-since-v1180-alpha0)
+  - [Urgent Update Notes](#urgent-update-notes-2)
+  - [Changes by Kind](#changes-by-kind-2)
+    - [API Changes](#api-changes-2)
+    - [Features & Enhancements](#features--enhancements-2)
+    - [Deprecation](#deprecation-2)
+    - [Bug Fixes](#bug-fixes-2)
+    - [Security](#security-2)
+  - [Other](#other-2)
+    - [Dependencies](#dependencies-2)
+    - [Helm Charts](#helm-charts-2)
+    - [Instrumentation](#instrumentation-2)
+    - [Performance](#performance-2)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
+# v1.18.0-beta.0
+## Downloads for v1.18.0-beta.0
+
+Download v1.18.0-beta.0 in the [v1.18.0-beta.0 release page](https://github.com/karmada-io/karmada/releases/tag/v1.18.0-beta.0).
+
+## Changelog since v1.18.0-alpha.2
+
+## Urgent Update Notes
+
+## Changes by Kind
+
+### API Changes
+- `scheduler-estimator`: Migrated to standard `protoc-gen-go` for gRPC API generation to support Kubernetes 1.35+. Introduced peer `bytes` fields for K8s types to ensure compatibility. ([#7298](https://github.com/karmada-io/karmada/pull/7298), @zhzhuang-zju)
+  - `ReplicaRequirements.resourceRequest` has been deprecated in favor of `resourceRequestBytes`, which stores proto-serialized `resource.Quantity` objects.
+  - `ComponentReplicaRequirements.resourceRequest` has been deprecated in favor of `resourceRequestBytes`, which stores proto-serialized `resource.Quantity` objects.
+  - `NodeClaim.nodeAffinity` has been deprecated in favor of `nodeAffinityBytes`, which stores a proto-serialized `corev1.NodeSelector` object.
+  - `NodeClaim.tolerations` has been deprecated in favor of `tolerationsBytes`, which stores proto-serialized `corev1.Toleration` objects.
+- Introduced `OverflowClusterAffinities` to `PropagationPolicy`/`ClusterPropagationPolicy` API to support overflow cluster resource pools for hybrid cloud scheduling. ([#7386](https://github.com/karmada-io/karmada/pull/7386), @zhzhuang-zju)
+
+### Features & Enhancements
+- `karmada-scheduler`: Extended cluster affinities to support overflow cluster resource pools for hybrid cloud scheduling. ([#7423](https://github.com/karmada-io/karmada/pull/7423), @zhzhuang-zju)
+- `karmada-webhook`: Added `overflowAffinities` validation for `spec.placement.clusterAffinities` in `PropagationPolicy`/`ClusterPropagationPolicy`. ([#7430](https://github.com/karmada-io/karmada/pull/7430), @zhzhuang-zju)
+
+### Deprecation
+None.
+
+### Bug Fixes
+- `karmada-controller-manager`: Fixed the issue that a transient `ClusterClientSetFunc` failure (e.g., missing `SecretRef` during credential rotation) would immediately set the cluster `Ready=False` without respecting `ClusterFailureThreshold`, potentially triggering unnecessary workload failover. ([#7426](https://github.com/karmada-io/karmada/pull/7426), @Tej-Katika)
+- `karmada-operator`: Fixed the issue that the operator did not apply `tolerations` and `affinity` settings to `karmada-aggregated-apiserver` and `karmada-search` deployments when configured via the Karmada CR. ([#7449](https://github.com/karmada-io/karmada/pull/7449), @jabellard)
+- `karmada-scheduler`: Fixed an issue where the schedule success event was missing cluster information when scheduling with `ClusterAffinities`. ([#7394](https://github.com/karmada-io/karmada/pull/7394), @vie-serendipity)
+
+### Security
+- The base image `alpine` has been promoted from `alpine:3.23.3` to `alpine:3.23.4` to address security concerns. ([#7412](https://github.com/karmada-io/karmada/pull/7412), @dependabot)
+
+## Other
+
+### Dependencies
+None.
+
+### Helm Charts
+None.
+
+### Instrumentation
+None.
+
+### Performance
+None.
 
 # v1.18.0-alpha.2
 ## Downloads for v1.18.0-alpha.2

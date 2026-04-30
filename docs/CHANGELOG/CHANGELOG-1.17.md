@@ -2,12 +2,18 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
-- [v1.17.1](#v1171)
-  - [Downloads for v1.17.1](#downloads-for-v1171)
-  - [Changelog since v1.17.0](#changelog-since-v1170)
+- [v1.17.2](#v1172)
+  - [Downloads for v1.17.2](#downloads-for-v1172)
+  - [Changelog since v1.17.1](#changelog-since-v1171)
     - [Changes by Kind](#changes-by-kind)
       - [Bug Fixes](#bug-fixes)
       - [Others](#others)
+- [v1.17.1](#v1171)
+  - [Downloads for v1.17.1](#downloads-for-v1171)
+  - [Changelog since v1.17.0](#changelog-since-v1170)
+    - [Changes by Kind](#changes-by-kind-1)
+      - [Bug Fixes](#bug-fixes-1)
+      - [Others](#others-1)
 - [v1.17.0](#v1170)
   - [Downloads for v1.17.0](#downloads-for-v1170)
   - [Urgent Update Notes](#urgent-update-notes)
@@ -20,7 +26,7 @@
     - [API Changes](#api-changes)
     - [Features & Enhancements](#features--enhancements)
     - [Deprecation](#deprecation)
-    - [Bug Fixes](#bug-fixes-1)
+    - [Bug Fixes](#bug-fixes-2)
     - [Security](#security)
   - [Other](#other)
     - [Dependencies](#dependencies)
@@ -32,11 +38,11 @@
   - [Downloads for v1.17.0-rc.0](#downloads-for-v1170-rc0)
   - [Changelog since v1.17.0-beta.0](#changelog-since-v1170-beta0)
   - [Urgent Update Notes](#urgent-update-notes-1)
-  - [Changes by Kind](#changes-by-kind-1)
+  - [Changes by Kind](#changes-by-kind-2)
     - [API Changes](#api-changes-1)
     - [Features & Enhancements](#features--enhancements-1)
     - [Deprecation](#deprecation-1)
-    - [Bug Fixes](#bug-fixes-2)
+    - [Bug Fixes](#bug-fixes-3)
     - [Security](#security-1)
   - [Other](#other-1)
     - [Dependencies](#dependencies-1)
@@ -47,11 +53,11 @@
   - [Downloads for v1.17.0-beta.0](#downloads-for-v1170-beta0)
   - [Changelog since v1.17.0-alpha.2](#changelog-since-v1170-alpha2)
   - [Urgent Update Notes](#urgent-update-notes-2)
-  - [Changes by Kind](#changes-by-kind-2)
+  - [Changes by Kind](#changes-by-kind-3)
     - [API Changes](#api-changes-2)
     - [Features & Enhancements](#features--enhancements-2)
     - [Deprecation](#deprecation-2)
-    - [Bug Fixes](#bug-fixes-3)
+    - [Bug Fixes](#bug-fixes-4)
     - [Security](#security-2)
   - [Other](#other-2)
     - [Dependencies](#dependencies-2)
@@ -62,11 +68,11 @@
   - [Downloads for v1.17.0-alpha.2](#downloads-for-v1170-alpha2)
   - [Changelog since v1.17.0-alpha.1](#changelog-since-v1170-alpha1)
   - [Urgent Update Notes](#urgent-update-notes-3)
-  - [Changes by Kind](#changes-by-kind-3)
+  - [Changes by Kind](#changes-by-kind-4)
     - [API Changes](#api-changes-3)
     - [Features & Enhancements](#features--enhancements-3)
     - [Deprecation](#deprecation-3)
-    - [Bug Fixes](#bug-fixes-4)
+    - [Bug Fixes](#bug-fixes-5)
     - [Security](#security-3)
   - [Other](#other-3)
     - [Dependencies](#dependencies-3)
@@ -77,11 +83,11 @@
   - [Downloads for v1.17.0-alpha.1](#downloads-for-v1170-alpha1)
   - [Changelog since v1.17.0-alpha.0](#changelog-since-v1170-alpha0)
   - [Urgent Update Notes](#urgent-update-notes-4)
-  - [Changes by Kind](#changes-by-kind-4)
+  - [Changes by Kind](#changes-by-kind-5)
     - [API Changes](#api-changes-4)
     - [Features & Enhancements](#features--enhancements-4)
     - [Deprecation](#deprecation-4)
-    - [Bug Fixes](#bug-fixes-5)
+    - [Bug Fixes](#bug-fixes-6)
     - [Security](#security-4)
   - [Other](#other-4)
     - [Dependencies](#dependencies-4)
@@ -90,6 +96,25 @@
     - [Performance](#performance-4)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
+# v1.17.2
+## Downloads for v1.17.2
+
+Download v1.17.2 in the [v1.17.2 release page](https://github.com/karmada-io/karmada/releases/tag/v1.17.2).
+
+## Changelog since v1.17.1
+
+### Changes by Kind
+
+#### Bug Fixes
+- `karmada-operator`: Fixed the issue that the operator did not apply `tolerations` and `affinity` settings to `karmada-aggregated-apiserver` and `karmada-search` deployments when configured via the Karmada CR. ([#7451](https://github.com/karmada-io/karmada/pull/7451), @jabellard)
+- `karmada-operator`: Fixed init reconciliation failure by replacing non-idempotent secret creation with an idempotent approach. ([#7406](https://github.com/karmada-io/karmada/pull/7406), @anr)
+- `karmada-scheduler`: Fixed an issue where the schedule success event was missing cluster information when scheduling with `ClusterAffinities`. ([#7418](https://github.com/karmada-io/karmada/pull/7418), @cotishq)
+- `karmada-scheduler`: Fixed incorrect error type propagation that caused bindings with insufficient cluster replicas to be misrouted to `backoffQ` instead of `unschedulableBindings`. ([#7353](https://github.com/karmada-io/karmada/pull/7353), @SujoyDutta)
+- Fixed the issue that `Job` completions were assigned to the wrong replicas for each cluster. ([#7397](https://github.com/karmada-io/karmada/pull/7397), @Ady0333)
+
+#### Others
+- The base image `alpine` has been promoted from `alpine:3.23.3` to `alpine:3.23.4` to address security concerns. ([#7414](https://github.com/karmada-io/karmada/pull/7414), @dependabot)
 
 # v1.17.1
 ## Downloads for v1.17.1
